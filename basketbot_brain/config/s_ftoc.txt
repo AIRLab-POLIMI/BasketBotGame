@@ -1,0 +1,2 @@
+( SpeedModule SPEEDMODULE )
+(RotSpeed ROTSPEED)

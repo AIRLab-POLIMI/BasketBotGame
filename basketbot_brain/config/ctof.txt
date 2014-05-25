@@ -1,0 +1,9 @@
+(PlayerDistance DISTANCE)
+(PlayerOrientation ORIENTATION)
+
+(SuggestedLinearSpeed LINEARSPEED)
+(SuggestedAngularSpeed ANGULARSPEED)
+
+#(ProposedSpeed SPEEDMODULE)
+
+(DebugFlag TRUE_FALSE)

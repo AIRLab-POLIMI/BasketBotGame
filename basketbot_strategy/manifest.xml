@@ -1,0 +1,14 @@
+<package>
+  <description brief="basketbot_strategy">
+
+     basketbot_strategy
+
+  </description>
+  <author>matteo</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/basketbot_strategy</url>
+
+</package>
+
+

@@ -1,0 +1,4 @@
+(SuggestedLeft) => (RotSpeed LEFT);
+(SuggestedRight) => (RotSpeed RIGHT);
+(SuggestedForward) => (SpeedModule FAST);
+(SuggestedBackward) => (SpeedModule REVERSE);

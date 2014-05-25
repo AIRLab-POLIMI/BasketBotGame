@@ -1,0 +1,10 @@
+(EnemyMedium) => (SpeedModule STEADY);
+(AND (EnemyFar) (PlayerFront)) => (SpeedModule FAST);
+(AND (EnemyNear) (PlayerRear)) => (SpeedModule FAST);
+(AND (EnemyFar) (PlayerRear)) => (SpeedModule REVERSE);
+(AND (EnemyNear) (PlayerFront)) => (SpeedModule REVERSE);
+
+(PlayerLeft) => (RotSpeed LEFT);
+(PlayerRight) => (RotSpeed RIGHT);
+(PlayerFront) => (RotSpeed STEADY);
+
