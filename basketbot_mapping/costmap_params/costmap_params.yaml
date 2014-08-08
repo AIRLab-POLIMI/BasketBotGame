@@ -1,0 +1,12 @@
+publish_frequency: 1.0
+footprint: [[-0.325, -0.325], [-0.325, 0.325], [0.325, 0.325], [0.46, 0.0], [0.325, -0.325]]
+
+plugins:
+- {name: obstacle_layer, type: 'costmap_2d::ObstacleLayer'}
+
+obstacle_layer:
+  observation_sources: base_scan
+  base_scan:
+    topic: /camera/points
+    data_type: PointCloud2   
+    clearing: true 
