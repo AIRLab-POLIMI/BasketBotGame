@@ -38,8 +38,7 @@ BrianWrapper::DataContainer BrianWrapper::execute(const BrianWrapper::DataContai
 	com->clear();
 
 	if(verbosity > 0) {
-		if(verbosity > 1)
-		{
+		if(verbosity > 1) {
 			std::ifstream log("./log/action.log");
 			std::cout << log.rdbuf();
 		}

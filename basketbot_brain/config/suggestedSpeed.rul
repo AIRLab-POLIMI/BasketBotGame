@@ -1,4 +1,9 @@
+(SuggestionAvailable) => (&DEL.SpeedModule ANY);
+(SuggestionAvailable) => (&DEL.RotSpeed ANY);
+
 (SuggestedLeft) => (RotSpeed LEFT);
 (SuggestedRight) => (RotSpeed RIGHT);
+(SuggestedAngularSteady) => (RotSpeed STEADY);
 (SuggestedForward) => (SpeedModule FAST);
 (SuggestedBackward) => (SpeedModule REVERSE);
+(SuggestedLinearSteady) => (SpeedModule STEADY);

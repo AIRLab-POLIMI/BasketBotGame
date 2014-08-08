@@ -4,12 +4,11 @@
 #include <stdio.h>
 using namespace Kalman;
 
-void  playerEKF::updatePlayerPos(float r,float theta,double time)
+void  playerEKF::updatePlayerPos(float r,float theta)
 {
 	Vector z(2);
 	z(1) = r;
 	z(2) = theta;
-	updateOdometry(last_odometry_v,last_odometry_alpha,time);
 	measureUpdateStep(z);
 }
 
@@ -17,40 +16,31 @@ std::vector<float> playerEKF::getStatus()
 {
 	Vector x = getX();
 	std::vector<float> result;
-	result.push_back(x(1));
-	result.push_back(x(2));
-	result.push_back(x(3));
-	result.push_back(x(4));
-	
+	float COS = cos(x(2));
+	float SIN = sin(x(2));
+	result.push_back(x(1) * COS);
+	result.push_back(x(1) * SIN) ;
+	result.push_back(x(5) * COS - SIN * x(4));
+	result.push_back(x(4) * COS + SIN * x(5) ) ;
+
 	Matrix P = calculateP();
 	result.push_back(P(1,1));
 	result.push_back(P(2,2));
-	
+
 	std::cout << "risultato = " << x<<std::endl;
-	
-	std::cout <<calculateP()<<std::endl;
+
+	std::cout <<P<<std::endl;
 	return result;
 }
 
-void playerEKF::updateOdometry(float v,float alpha,double time)
+void playerEKF::updateOdometry(float v,float alpha)
 {
-	last_odometry_v = v;
-	last_odometry_alpha = alpha;
-	if(last_update == 0)
-	{
-		last_update = time;
-		return;
-	}
-	
 	Vector u(2);
 	u(1) = v;
 	u(2) = alpha;
-	
-	while(time - last_update > periodT)
-	{
-		timeUpdateStep(u);
-		last_update += periodT;
-	}
+
+	timeUpdateStep(u);
+
 }
 
 void playerEKF::makeA()
@@ -58,57 +48,68 @@ void playerEKF::makeA()
 
 	float COS = cos(periodT*u(2));
 	float SIN = sin(periodT*u(2));
-	A(1,1) = COS;
-	A(1,2) = -SIN;
-	A(1,3) = periodT;
+	A(1,1) = 1;
+	A(1,2) = u(1)*periodT*sin(x(2));
+	A(1,3) = 0;
 	A(1,4) = 0;
+	A(1,5) = periodT;
 
-	A(2,1) = SIN;
-	A(2,2) = COS;
-	A(2,3) = 0;
-	A(2,4) = periodT;
+	A(2,1) = 0;
+	A(2,2) = 1;
+	A(2,3) = periodT;
+	A(2,4) = 0;
+	A(2,5) = 0;
 
-	A(3,1) = 0;
+	A(3,1) = -x(4)* x(5)/(x(1)*x(1));
 	A(3,2) = 0;
-	A(3,3) = COS;
-	A(3,4) = -SIN;
+	A(3,3) = 0;
+	A(3,4) = 1/x(1);
+	A(3,5) = 0;
 
 	A(4,1) = 0;
 	A(4,2) = 0;
-	A(4,3) = SIN;
-	A(4,4) = COS;
+	A(4,3) = 0;
+	A(4,4) = 1;
+	A(4,5) = 0;
+
+	A(5,1) = 0;
+	A(5,2) = 0;
+	A(5,3) = 0;
+	A(5,4) = 0;
+	A(5,5) = 1;
 
 }
 
 void playerEKF::makeH()
 {
-	H(1,1) = x(1)/sqrt(x(1)*x(1)+x(2)*x(2));
-	H(1,2) = x(2)/sqrt(x(1)*x(1)+x(2)*x(2));
+	H(1,1) = 1;
+	H(1,2) = 0;
 	H(1,3) = 0.0;
 	H(1,4) = 0.0;
-
-	H(2,1) = -x(2)/(x(1)*x(1)+x(2)*x(2));
-	H(2,2) = x(1)/(x(1)*x(1)+x(2)*x(2));
+	H(1,5) = 0.0;
+	H(2,1) = 0;
+	H(2,2) = 1;
 	H(2,3) = 0.0;
 	H(2,4) = 0.0;
+	H(2,5) = 0.0;
 
 }
 
 void playerEKF::makeMeasure()
 {
-	z(1)=sqrt(x(1)*x(1)+x(2)*x(2));
-	z(2)=atan2(x(2), x(1));
+	z(1)=x(1);
+	z(2)=x(2);
 }
 
 void playerEKF::makeProcess()
 {
-	float COS = cos(periodT*u(2));
-	float SIN = sin(periodT*u(2));
+
 	Vector x_(x.size());
-	x_(1) = x(1)*COS - x(2) * SIN  + x(3)*periodT- periodT*u(1);
-	x_(2) = x(1) * SIN + x(2) * COS + x(4) * periodT ;
-	x_(3) = x(3) * COS - x(4) * SIN;
-	x_(4) = x(4) * COS + x(3) * SIN;
+	x_(1) = x(1) + x(5)*periodT  -u(1)*cos(x(2))*periodT;
+	x_(2) = x(2) + x(3) * periodT - u(2) * periodT;
+	x_(3) = x(4) / x(1);
+	x_(4) = x(4) ;
+	x_(5) = x(5);
 	x.swap(x_);
 
 }
@@ -143,30 +144,36 @@ void playerEKF::makeW()
 	W(1,2) = 0.0;
 	W(2,1) = 0.0;
 	W(2,2) = 0.0;
-	W(3,1) = 1.0;
+	W(3,1) = 0.0;
 	W(3,2) = 0.0;
-	W(4,1) = 0.0;
-	W(4,2) = 1.0;
+	W(4,1) = 1.0;
+	W(4,2) = 0.0;
+	W(5,1) = 0.0;
+	W(5,2) = 1.0;
 }
 
 playerEKF::playerEKF()
 {
-	setDim(4, 2, 2, 2, 2);
-	periodT = 0.15;
-	last_update = 0;
-	int n = 4;
+	setDim(5, 2, 2, 2, 2);
+	periodT = 0.05;
 
-	float _P0[] = {100.0*100.0, 0.0, 0.0, 0.0,
-	               0.0, 10.0*10.0, 0.0, 0.0,
-	               0.0, 0.0, 25.0*25.0, 0.0,
-	               0.0, 0.0, 0.0, 10.0*10.0
+
+
+	int n = 5;
+
+	float _P0[] = {100.0*100.0,       0.0,       0.0,       0.0, 0.0,
+	               0.0,         10.0*10.0,       0.0,       0.0, 0.0,
+	               0.0,               0.0, 25.0*25.0,       0.0, 0.0,
+	               0.0,               0.0,       0.0, 10.0*10.0, 0.0,
+	               0.0,               0.0,       0.0,       0.0, 25*25.0,
 	              };
 	Matrix P0(n, n, _P0);
-	Vector x(4);
+	Vector x(n);
 	x(1) = 2;
 	x(2) = 0;
 	x(3) = 0;
 	x(4) = 0;
+	x(5) = 0;
 	init(x, P0);
 
 	selectKVectorContext(createKVectorContext());

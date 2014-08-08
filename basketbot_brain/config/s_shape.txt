@@ -5,7 +5,7 @@
 )
 
 (ROTSPEED
-(SNG (LEFT -1))
+(SNG (LEFT 1))
 (SNG (STEADY 0))
-(SNG (RIGHT 1))
+(SNG (RIGHT -1))
 )

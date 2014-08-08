@@ -7,3 +7,9 @@
 #(ProposedSpeed SPEEDMODULE)
 
 (DebugFlag TRUE_FALSE)
+
+(PlayerVelocityX PLAYERMOVEMENTR)
+(PlayerVelocityY PLAYERMOVEMENTT)
+
+(unreliability FUZZY_BOOLEAN)
+(SuggestionAvailable TRUE_FALSE)

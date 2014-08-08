@@ -16,10 +16,7 @@ class BasketBotBrain
 	
 	//STATE
 	float currentUnreliability;
-	float predictedX;
-	float predictedY;
-	float predictedVX;
-	float predictedVY;
+	
 	
 	//PARAMETERS
 	float distanceOffset;
@@ -27,7 +24,7 @@ class BasketBotBrain
 	float rotationCommandSensitivity;
 	float suggestedLinearSpeed;
 	float suggestedAngularSpeed;
-	
+	float outputSensitivity;
 	
 	
 	

@@ -4,7 +4,7 @@ project(basketbot_mapping)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED tf geometry_msgs std_msgs roscpp message_generation genmsg)
+find_package(catkin REQUIRED tf geometry_msgs std_msgs roscpp message_generation)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -100,7 +100,7 @@ link_directories(${EXTERNAL_SRC}/kalman)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-
+add_dependencies(player_mapping ${catkin_EXPORTED_TARGETS})
 ## Specify libraries to link a library or executable target against
  target_link_libraries(player_mapping
    ${catkin_LIBRARIES} kalman 

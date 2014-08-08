@@ -17,12 +17,10 @@ protected:
 	void makeMeasure();
 
 	float periodT;
-	double last_update;
-	float last_odometry_v;
-	float last_odometry_alpha;
+	
 	public:
-	void updateOdometry(float v,float rot,double time);
-	void updatePlayerPos(float r,float theta,double time);
+	void updateOdometry(float v,float rot);
+	void updatePlayerPos(float r,float theta);
 	std::vector<float> getStatus();
 	
 };

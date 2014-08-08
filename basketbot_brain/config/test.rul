@@ -4,6 +4,14 @@
 (AND (EnemyFar) (PlayerRear)) => (SpeedModule REVERSE);
 (AND (EnemyNear) (PlayerFront)) => (SpeedModule REVERSE);
 
+(AND (PlayerApproaching) (PlayerFront)) => (SpeedModule REVERSE);
+(AND (PlayerEscaping) (PlayerFront)) => (SpeedModule FAST);
+(AND (PlayerApproaching) (PlayerRear)) => (SpeedModule FAST);
+(AND (PlayerEscaping) (PlayerRear)) => (SpeedModule REVERSE);
+
+
+
+
 (PlayerLeft) => (RotSpeed LEFT);
 (PlayerRight) => (RotSpeed RIGHT);
 (PlayerFront) => (RotSpeed STEADY);

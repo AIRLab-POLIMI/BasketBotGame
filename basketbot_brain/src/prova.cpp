@@ -2,6 +2,8 @@
 #include "BrianWrapper.h"
 #include <iostream>
 #include <fstream>
+#include <ros/package.h>
+
 int main(int argc, char ** argv)
 {
 	/* leggo un file con i dati in input.
@@ -34,6 +36,8 @@ int main(int argc, char ** argv)
 			input[name] = value;
 	}
 
+std::string brian_config_path = ros::package::getPath("basketbot_brain") + "/config";
+std::cout << brian_config_path <<std::endl;
 	/* creo l'oggetto brian */
 	BrianWrapper brian(BRIAN_CONFIG_PATH,2);
 	
