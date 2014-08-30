@@ -1,0 +1,3 @@
+<launch>
+  <node name="basketbot_mapping" pkg="basketbot_mapping" type="player_mapping" />
+</launch>

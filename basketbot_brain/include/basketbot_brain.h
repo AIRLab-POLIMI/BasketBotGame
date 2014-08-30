@@ -1,14 +1,13 @@
-#include "BrianWrapper.h"
+#ifndef BASKETBOT_BRAIN_H
+#define BASKETBOT_BRAIN_H
 
-class MessengerInterface
-{
-		public:
-	virtual void sendCommands(float v, float rot) =0;
-	
-};
+#include "BrianWrapper.h"
+class RosBrianBridge;
+
+
 class BasketBotBrain
 {
-	MessengerInterface *messenger;
+	RosBrianBridge *messenger;
 	BrianWrapper brian;
 	BrianWrapper::DataContainer input, output;
 	void runBrian();
@@ -16,23 +15,32 @@ class BasketBotBrain
 	
 	//STATE
 	float currentUnreliability;
-	
+	float suggestedLinearSpeed;
+	float suggestedAngularSpeed;
+	float distance;
+	float angle;
+	float predictedVX;
+	float predictedVY;
 	
 	//PARAMETERS
 	float distanceOffset;
 	float distanceSensitivity;
 	float rotationCommandSensitivity;
-	float suggestedLinearSpeed;
-	float suggestedAngularSpeed;
+
 	float outputSensitivity;
+	float reverseRotationThreshold;
+	float playerNotVisibleThreshold;
+	float playerLostThreshold;
 	
 	
 	
 public:
-	BasketBotBrain(MessengerInterface *,std::string);
+	BasketBotBrain(RosBrianBridge *,std::string);
 	void setPlayerPosPrediction(float x,float y,float vx,float vy);
 	void setPlayerPosUnreliability(float u);
 	void setSuggestedCmdVel(float speed,float twist);
-	
+	void spinOnce();
 	
 };
+
+#endif

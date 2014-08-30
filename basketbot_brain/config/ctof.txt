@@ -4,12 +4,10 @@
 (SuggestedLinearSpeed LINEARSPEED)
 (SuggestedAngularSpeed ANGULARSPEED)
 
-#(ProposedSpeed SPEEDMODULE)
-
 (DebugFlag TRUE_FALSE)
 
-(PlayerVelocityX PLAYERMOVEMENTR)
-(PlayerVelocityY PLAYERMOVEMENTT)
+(PlayerVelocityX PLAYERSPEEDRADIAL)
+(PlayerVelocityY ANGULARSPEED)
 
-(unreliability FUZZY_BOOLEAN)
-(SuggestionAvailable TRUE_FALSE)
+(Unreliability UNRELIABILITY)
+(SuggestionAvailable FUZZY_BOOLEAN)

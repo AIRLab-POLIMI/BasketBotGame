@@ -1,0 +1,24 @@
+(NOT 
+	(AND 
+		(OR (EnemyFar) (EnemyNear)) 
+		(OR (PlayerFront)  (PlayerRear))  
+	)
+) => (SpeedModule STEADY);
+(AND (EnemyFar) (PlayerFront)) => (SpeedModule FORWARD);
+(AND (EnemyNear) (PlayerRear)) => (SpeedModule FORWARD);
+(AND (EnemyFar) (PlayerRear)) => (SpeedModule REVERSE);
+(AND (EnemyNear) (PlayerFront)) => (SpeedModule REVERSE);
+
+(AND (PlayerApproaching) (PlayerFront)) => (SpeedModule REVERSE);
+(AND (PlayerEscaping) (PlayerFront)) => (SpeedModule FORWARD);
+(AND (PlayerApproaching) (PlayerRear)) => (SpeedModule FORWARD);
+(AND (PlayerEscaping) (PlayerRear)) => (SpeedModule REVERSE);
+
+
+
+
+
+(PlayerLeft) => (RotSpeed LEFT);
+(PlayerRight) => (RotSpeed RIGHT);
+(PlayerFront) => (RotSpeed STEADY);
+

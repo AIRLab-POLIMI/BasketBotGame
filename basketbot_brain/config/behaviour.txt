@@ -1,10 +1,13 @@
-( level 1 test 	test.rul )
+( level 1 follow 	follow.rul )
+
+
 ( level 2 suggestions 	suggestedSpeed.rul )
 
 
 
+ ( level 1 followGhost followGhost.rul )
+ ( level 1 explore explore.rul )
 
+ ( level 2 search 	search.rul )
 
-
-
-
+ ( level 3 avoidObstacles avoidObstacles.rul )

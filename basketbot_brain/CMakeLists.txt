@@ -4,7 +4,7 @@ project(basketbot_brain)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED roscpp roslib)
+find_package(catkin REQUIRED roscpp roslib brian_wrapper)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -75,8 +75,8 @@ find_package(catkin REQUIRED roscpp roslib)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES basketbot_brain
+#  INCLUDE_DIRS include
+#  LIBRARIES basketbot_brain
 #  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
 )
@@ -84,16 +84,12 @@ catkin_package(
 ###########
 ## Build ##
 ###########
-set(EXTERNAL_SRC ${CMAKE_HOME_DIRECTORY}/../external_src)
+#set(EXTERNAL_SRC ${CMAKE_HOME_DIRECTORY}/../external_src)
 add_definitions(-DBRIAN_CONFIG_PATH="${PROJECT_SOURCE_DIR}/config" )
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
- include_directories(include ${EXTERNAL_SRC}/mrt-brian/brian/include ${EXTERNAL_SRC}/mrt-brian/shared ${EXTERNAL_SRC}/mrt-brian/fuzzy/include)
-link_directories(
-${EXTERNAL_SRC}/mrt-brian/fuzzy/lib
-${EXTERNAL_SRC}/mrt-brian/brian/lib
-)
+include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Declare a cpp library
 # add_library(basketbot_brain
@@ -103,7 +99,6 @@ ${EXTERNAL_SRC}/mrt-brian/brian/lib
 ## Declare a cpp executable
  add_executable(test_rules 
 	src/prova.cpp
-	src/BrianWrapper.cpp	
 )
 #add_executable(basketbot_brain
 #src/BrianWrapper.cpp
@@ -111,7 +106,6 @@ ${EXTERNAL_SRC}/mrt-brian/brian/lib
 
  add_executable(basketbot_brain
         src/ros_brian_bridge.cpp
-        src/BrianWrapper.cpp
 	src/basketbot_brain.cpp
 )
 
@@ -120,14 +114,11 @@ ${EXTERNAL_SRC}/mrt-brian/brian/lib
 # add_dependencies(basketbot_brain_node basketbot_brain_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(brian
-#   fuzzy
-# )
  target_link_libraries(test_rules
-   ${catkin_LIBRARIES} brian fuzzy
+   ${catkin_LIBRARIES} 
  )
 target_link_libraries(basketbot_brain
-   ${catkin_LIBRARIES} brian fuzzy
+   ${catkin_LIBRARIES} 
  )
 
 #############
