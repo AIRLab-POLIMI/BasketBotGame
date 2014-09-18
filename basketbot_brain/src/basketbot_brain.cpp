@@ -3,75 +3,98 @@
 #include <math.h>
 #include "RosBrianBridge.h"
 
+const unsigned int rate = 30;
+
+
+void BasketBotBrain::rotateAndSearch(float direction)
+{
+	currentState = (direction<0)?SEARCH_RIGHT:SEARCH_LEFT;
+	stateDuration = 5.0; 
+
+}
+
 void BasketBotBrain::runBrian()
 {
-	//create brian variables
+	if(currentState != NORMAL) {
+		stateDuration -= elapsedTime.toSec();
+		if(stateDuration <= 0)
+			currentState = NORMAL;
+	}
 	
+	
+	std::cout << "unr: "<<messenger->getPlayerPositionUnreliability()<<std::endl;
+
+	//create brian variables
+
 	input["PlayerDistance" ] = (messenger->getPlayerDistance() - distanceOffset) * distanceSensitivity;
-	input["PlayerOrientation"] = angle;
-	input["PlayerVelocityX"] = predictedVX;
-	input["PlayerVelocityY"] = predictedVY;
-	input["Unreliability"] = 0;//currentUnreliability;
+	input["PlayerOrientation"] = messenger->getPlayerOrientation();
+	input["PlayerVelocityX"] = messenger->getPlayerVelocityX()*playerSpeedSensitivity;
+	input["PlayerVelocityY"] = messenger->getPlayerVelocityY()*playerSpeedSensitivity;
 	input["DebugFlag"] = 1;
 
-	input["SuggestedLinearSpeed" ] = suggestedLinearSpeed;
-	input["SuggestedAngularSpeed"] = suggestedAngularSpeed;
+	input["SuggestedLinearSpeed" ] = messenger->getSuggestedLinearSpeed();
+	input["SuggestedAngularSpeed"] = messenger->getSuggestedAngularSpeed();
 
+
+
+	float currentUnreliability = messenger->getPlayerPositionUnreliability();
+	if(input["Unreliability"]< playerNotVisibleThreshold && currentUnreliability >= playerNotVisibleThreshold)
+		rotateAndSearch(-input["PlayerVelocityY"]);
+
+	input["RobotStatus"] = currentState;
+
+
+	input["Unreliability"] = (currentUnreliability -playerNotVisibleThreshold) +1;//currentUnreliability;
 
 	output = brian.execute(input);
 
 	float speed = 0,rotation=0;
-	//if(output.find("SpeedModule") != output.end())
-	speed = output["SpeedModule"]*outputSensitivity;
-	//if(output.find("RotSpeed") != output.end())
-	rotation = output["RotSpeed"]*outputSensitivity;
-
+	speed = output["SpeedModule"];
+	rotation = output["RotSpeed"];
+	speed=applyShape(speed,outputSnappiness);
+	rotation=applyShape(rotation,outputSnappiness);
 	messenger->setSpeed(speed,rotation);
 
+	input["RobotLinearSpeed"] = speed;
+	input["RobotAngularSpeed"] = rotation;
+	currentState = BasketBotBrain::State ( (float) output["RobotStatus"]);
+
 }
 
-void BasketBotBrain::setSuggestedCmdVel(float speed,float twist)
-{
-	suggestedLinearSpeed = speed;
-	suggestedAngularSpeed = twist;
-}
 
 BasketBotBrain::BasketBotBrain(RosBrianBridge *messenger,std::string config_path): messenger(messenger),brian(config_path,1)
 {
 	distanceOffset = 2;
 	distanceSensitivity = 0.5 ;
-	outputSensitivity = 1;
+	playerSpeedSensitivity = 0.5;
 	reverseRotationThreshold = 0.5;
-	suggestedLinearSpeed=0;
-	suggestedAngularSpeed=0;
+	outputSnappiness = 0;
+	playerNotVisibleThreshold = 1.8;
 }
 
-void BasketBotBrain::setPlayerPosUnreliability(float u)
+float BasketBotBrain::applyShape(float input,float shape)
 {
-	currentUnreliability = u;
+	if(shape > 0)
+		return pow(input,shape+1.0);
+	if(shape < 0)
+		return pow(input,1/(1-shape));
+	return input;
+
+}
+void BasketBotBrain::freeze(float seconds)
+{
+//	stateDuration = ros::Duration(seconds);
+	currentState = FROZEN;
+	stateDuration = seconds;
+
 
 }
 void BasketBotBrain::spinOnce()
 {
-	
-	runBrian();
-}
-void BasketBotBrain::setPlayerPosPrediction(float x,float y,float vx,float vy)
-{
-	//use predictions
-	float predictedX = x;
-	float predictedY  = y ;
-	predictedVX = vx;
-	predictedVY = vy;
-
-	distance = sqrt(predictedX*predictedX+predictedY*predictedY) - distanceOffset;
-	angle = atan2(predictedY,predictedX);
-	std::cout << "distanza: " << distance << std::endl;
-
-
+	ros::Time n =ros::Time::now();
+	elapsedTime = n - lastUpdate;
+	lastUpdate = n;
 
 
 	runBrian();
-
-
 }

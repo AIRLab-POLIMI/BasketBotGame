@@ -1,3 +1,17 @@
 <launch>
-  <node name="basketbot_mapping" pkg="basketbot_mapping" type="player_mapping" />
+ 
+  <include file="$(find basketbot_launch)/launch/basketbot_openni.launch">
+  </include>
+ <include file="$(find basketbot_launch)/launch/face_detector.rgbd.launch">
+  </include>
+  
+   <node name="openni_tracker" pkg="openni_tracker" type="openni_tracker" >
+    
+  </node>
+   <node name="player_recognition" pkg="player_tracker" type="player_recognition" output="screen" />    
+  
+   <node name="watchdog" pkg="player_tracker" type="face_recognition_watchdog" >
+
+  </node>
+
 </launch>

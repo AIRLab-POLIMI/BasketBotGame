@@ -4,7 +4,7 @@ project(basketbot_simulator)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs genmsg tf)
+find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs genmsg tf vrep_plugin)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -107,6 +107,10 @@ target_link_libraries(basketbot_sim   ${catkin_LIBRARIES} )
 
 add_executable(basketbot_vrep_tilt src/basketbot_vrep_tilt.cpp)
 target_link_libraries(basketbot_vrep_tilt   ${catkin_LIBRARIES} )
+
+add_executable(basketbot_tracker_sim src/basketbot_tracker_sim.cpp)
+target_link_libraries(basketbot_tracker_sim   ${catkin_LIBRARIES} )
+
 #add_executable(testcamera src/test.cpp) 
 #target_link_libraries(testcamera   ${catkin_LIBRARIES} )
 ## Add cmake target dependencies of the executable/library

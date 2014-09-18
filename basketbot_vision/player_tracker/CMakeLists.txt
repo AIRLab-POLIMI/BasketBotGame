@@ -4,7 +4,7 @@ project(player_tracker)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED  COMPONENTS roscpp tf)
+find_package(catkin REQUIRED  COMPONENTS roscpp tf message_generation PCL)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -40,11 +40,11 @@ find_package(catkin REQUIRED  COMPONENTS roscpp tf)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
+ add_message_files(
+   FILES
+   PosPrediction.msg
 #   Message2.msg
-# )
+ )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -61,10 +61,11 @@ find_package(catkin REQUIRED  COMPONENTS roscpp tf)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+ generate_messages(
+   DEPENDENCIES
+   std_msgs  # Or other packages containing msgs
+   geometry_msgs
+ )
 
 ###################################
 ## catkin specific configuration ##
@@ -88,22 +89,39 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-# include_directories(include)
+include_directories(include kalman)
+link_directories(
+	${PROJECT_SOURCE_DIR}/kalman
+)
+
+
 
 ## Declare a cpp library
 # add_library(player_tracker
 #   src/${PROJECT_NAME}/player_tracker.cpp
 # )
 
+add_custom_target(
+compile_kalman
+COMMAND make
+WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/kalman
+)
+
+
 ## Declare a cpp executable
- add_executable(player_tracker_node src/player_tracker_node.cpp)
+ add_executable(player_recognition src/player_recognition.cpp src/player_mapping_kalman.cpp)
+add_executable(player_tracker src/player_mapping_kalman src/ros_mapping_bridge )
+add_executable(face_recognition_watchdog src/face_recognition_watchdog.cpp )
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(player_tracker_node player_tracker_generate_messages_cpp)
+ add_dependencies(player_tracker player_tracker_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(player_tracker_node ${catkin_LIBRARIES} )
+target_link_libraries(player_recognition ${catkin_LIBRARIES} kalman)
+
+target_link_libraries(player_tracker ${catkin_LIBRARIES} kalman)
+target_link_libraries(face_recognition_watchdog ${catkin_LIBRARIES} )
 
 #############
 ## Install ##

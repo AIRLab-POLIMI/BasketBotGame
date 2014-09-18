@@ -2,7 +2,7 @@
 #define ROS_BRIAN_BRIDGE_H
 
 #include <ros/ros.h>
-#include <basketbot_mapping/PosPrediction.h>
+#include <player_tracker/PosPrediction.h>
 #include <r2p/Velocity.h>
 #include <geometry_msgs/Twist.h>
 #include "basketbot_brain.h"
@@ -19,7 +19,7 @@ class RosBrianBridge
 	ros::Subscriber suggestedCmdVel;
 	ros::Subscriber suggestedCmdVelJ;
 	BasketBotBrain brain;
-	void predictionCallback(const basketbot_mapping::PosPrediction::ConstPtr& msg);
+	void predictionCallback(const player_tracker::PosPrediction::ConstPtr& msg);
 	void desiredCmdVelKeyCallback(const geometry_msgs::Twist::ConstPtr& msg);
 	void desiredCmdVelJoyCallback(const r2p::Velocity::ConstPtr& msg);
 	
@@ -42,8 +42,9 @@ public:
 	float getPlayerOrientation();
 	float getPlayerVelocityY();
 	float getPlayerVelocityX();
-	
-	
+	float getPlayerPositionUnreliability();
+	float getSuggestedLinearSpeed();
+	float getSuggestedAngularSpeed();
 	RosBrianBridge();
 	~RosBrianBridge() {}
 };

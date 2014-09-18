@@ -1,130 +1,260 @@
 #include <ros/ros.h>
-#include <image_transport/image_transport.h>
-#include <cv_bridge/cv_bridge.h>
-#include <sensor_msgs/image_encodings.h>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <iostream>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/sample_consensus/ransac.h>
+#include <pcl/sample_consensus/sac_model_sphere.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/passthrough.h>
+#include <pcl/point_types_conversion.h>
 
-#include <list>
-
-static const std::string OPENCV_WINDOW = "Image window";
-
-		int a=15,b=30,c=50,d=190,e=164,f=256;
-		int cl=1,op=1;
-
-
-struct ball_data
+class BallRecognition
 {
-	float x;
-	float y;
-	float r;
-};
+	typedef pcl::PointXYZRGB pointType;
+	ros::NodeHandle node;
+	ros::Subscriber pclSubscriber;
+	void pclCallback(const sensor_msgs::PointCloud2::ConstPtr&);
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;
 
-void on_trackbar( int, void* )
-{
-	
-}
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> createViewer();
 
+	pcl::PointCloud<pointType>::Ptr cloud;
+	pcl::PointCloud<pointType>::Ptr cloudTmp;
 
-class ImageConverter
-{
-	ros::NodeHandle nh_;
-	image_transport::ImageTransport it_;
-	image_transport::Subscriber image_sub_;
-	image_transport::Publisher image_pub_;
+	float hmin, hmax,smin,smax;
+
+	void filterVoxelGrid();
+	void filterByColor();
+	void updateFilterValues();
+	bool findSphere(pcl::PointIndices::Ptr,pcl::ModelCoefficients::Ptr);
 
 public:
-	ImageConverter()
-		: nh_("~"),it_(nh_) {
-		// Subscrive to input video feed and publish output video feed
-		image_sub_ = it_.subscribe("/camera/image_raw", 1,
-		                           &ImageConverter::imageCb, this);
-		image_pub_ = it_.advertise("/image_converter/output_video", 1);
-
-		nh_.getParam("a",a);
-		nh_.getParam("b",b);
-		nh_.getParam("c",c);
-		nh_.getParam("d",d);
-		std::cout << a << std::endl;
-		cv::namedWindow(OPENCV_WINDOW);
-		cv::namedWindow("control");
-		cv::createTrackbar( "H min", "control", &a, 179, on_trackbar );
-		cv::createTrackbar( "H max", "control", &b, 179, on_trackbar );
-		cv::createTrackbar( "S min", "control", &c, 256, on_trackbar );
-		cv::createTrackbar( "S max", "control", &d, 256, on_trackbar );
-		cv::createTrackbar( "V min", "control", &e, 256, on_trackbar );
-		cv::createTrackbar( "V max", "control", &f, 256, on_trackbar );
-		cv::createTrackbar( "close", "control", &cl, 10, on_trackbar );
-		cv::createTrackbar( "open", "control", &op, 10, on_trackbar );
-		
-	}
-
-	~ImageConverter() {
-		cv::destroyWindow(OPENCV_WINDOW);
-		cv::destroyWindow("control");
-	}
-
-	void imageCb(const sensor_msgs::ImageConstPtr& msg) {
-		cv_bridge::CvImagePtr cv_ptr;
-		try {
-			cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-		} catch (cv_bridge::Exception& e) {
-			ROS_ERROR("cv_bridge exception: %s", e.what());
-			return;
-		}
-
-		cv::Mat img_ = cv_ptr->image.clone();
-
-		//cv::Point point(img_.rows/2,img_.cols/2);
-
-
-		//cv::Scalar val = cvGet2D(img_, 320, 240);
-		cvtColor( cv_ptr->image, img_, CV_BGR2HSV );
-
-		cv::Vec3b bgr = img_.at<cv::Vec3b>(img_.rows/2,img_.cols/2);
-		std::cout << bgr <<std::endl;
-
-		//cv::inRange(img_, cv::Scalar(0.11*179, 0.0*256, 0.0*256, 0),cv::Scalar(0.44*179, 1.00*256, 1.00*256, 0), img_);
-		//cv::inRange(img_, cv::Scalar(15, a,00, 0),cv::Scalar(30, b, 256, 0), img_);
-		cv::inRange(img_, cv::Scalar(a, c,e, 0),cv::Scalar(b, d, f, 0), img_);
-
-
-		cv::Mat element = getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( op,op ));
-		cv::Mat elementc = getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( cl,cl ));
-		morphologyEx( img_, img_, cv::MORPH_OPEN, element );
-		morphologyEx( img_, img_, cv::MORPH_CLOSE, elementc );
-		//GaussianBlur( img_,img_, cv::Size(9, 9), 2, 2 );
-		std::vector<cv::Vec3f> circles;
-		//HoughCircles(img_, circles, CV_HOUGH_GRADIENT, 1,img_.rows/8, 200, 80, 0, 0 );
-		std::cout << "Cerchi: "<< circles.size()<<std::endl;
-
-		for( size_t i = 0; i < circles.size(); i++ ) {
-			cv::Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-			int radius = cvRound(circles[i][2]);
-			// circle center
-			cv::circle( img_, center, 3, cv::Scalar(0,255,0), -1, 8, 0 );
-			// circle outline
-			cv::circle( img_, center, radius, cv::Scalar(0,0,255), 3, 8, 0 );
-		}
-
-
-		// Draw an example circle on the video stream
-		if (cv_ptr->image.rows > 60 && cv_ptr->image.cols > 60)
-			cv::circle(img_, cv::Point(cv_ptr->image.cols/2,cv_ptr->image.rows/2), 10, CV_RGB(255,0,0));
-
-		// Update GUI Window
-		cv::imshow(OPENCV_WINDOW, img_);
-		cv::waitKey(3);
-
-		// Output modified video stream
-		image_pub_.publish(cv_ptr->toImageMsg());
-	}
+	void spin();
+	BallRecognition();
 };
+boost::shared_ptr<pcl::visualization::PCLVisualizer> BallRecognition::createViewer()
+{
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+	viewer->setBackgroundColor (0, 0, 0);
+
+	viewer->initCameraParameters ();
+	return (viewer);
+
+}
+BallRecognition::BallRecognition()
+{
+	float colore = 37.6;
+
+
+	hmin=colore-5.0, hmax=colore+5.0,smin=0.0,smax=2.0;
+
+	pclSubscriber = node.subscribe<sensor_msgs::PointCloud2>("/camera/depth_registered/points", 1, &BallRecognition::pclCallback,this);
+	viewer = createViewer();
+	cloud= pcl::PointCloud<pointType>::Ptr(new pcl::PointCloud<pointType>());
+	cloudTmp= pcl::PointCloud<pointType>::Ptr(new pcl::PointCloud<pointType>());
+
+}
+void BallRecognition::spin()
+{
+	ros::Rate r(10);
+	while(ros::ok() && !viewer->wasStopped ()) {
+		ros::spinOnce();
+		viewer->spinOnce (10);
+		r.sleep();
+	}
+
+}
+
+void BallRecognition::filterVoxelGrid()
+{
+	pcl::VoxelGrid<pointType> sor;
+	sor.setInputCloud (cloud);
+	sor.setLeafSize (0.005f, 0.005f, 0.005f);
+	sor.filter (*cloudTmp);
+	std::swap(cloud,cloudTmp);
+
+}
+void BallRecognition::filterByColor()
+{
+	std::cout <<"punti iniziali: "<< cloud->size()<<std::endl;
+	{
+		pcl::PointCloud<pcl::PointXYZHSV>::Ptr hsvCloud(new pcl::PointCloud<pcl::PointXYZHSV>());
+		std::vector<int> indices;
+
+		pcl::PointCloudXYZRGBtoXYZHSV (*cloud,*hsvCloud);
+
+		pcl::PassThrough<pcl::PointXYZHSV> pass;
+		pass.setInputCloud (hsvCloud);
+		pass.setFilterFieldName ("h");
+		pass.setFilterLimits (hmin, hmax);
+		//pass.setFilterLimitsNegative (true);
+		pass.filter (indices);
+		pcl::copyPointCloud<pcl::PointXYZRGB>(*cloud, indices,*cloudTmp);
+		std::cout <<"poi: "<< indices.size()<<std::endl;
+		std::swap(cloud,cloudTmp);
+	}
+	{
+		pcl::PointCloud<pcl::PointXYZHSV>::Ptr hsvCloud(new pcl::PointCloud<pcl::PointXYZHSV>());
+		std::vector<int> indices;
+
+		pcl::PointCloudXYZRGBtoXYZHSV (*cloud,*hsvCloud);
+
+		pcl::PassThrough<pcl::PointXYZHSV> pass;
+		pass.setInputCloud (hsvCloud);
+		pass.setFilterFieldName ("s");
+		pass.setFilterLimits (smin, smax);
+		//pass.setFilterLimitsNegative (true);
+		pass.filter (indices);
+		pcl::copyPointCloud<pcl::PointXYZRGB>(*cloud, indices,*cloudTmp);
+
+		std::swap(cloud,cloudTmp);
+		std::cout <<"punti rimanenti: "<< indices.size()<<std::endl;
+	}
+
+
+}
+void BallRecognition::updateFilterValues()
+{
+	{
+		pcl::PointCloud<pcl::PointXYZHSV>::Ptr hsvCloud(new pcl::PointCloud<pcl::PointXYZHSV>());
+		std::vector<double> v;
+		pcl::PointCloudXYZRGBtoXYZHSV (*cloud,*hsvCloud);
+
+		for(pcl::PointCloud<pcl::PointXYZHSV>::iterator it = hsvCloud->begin(); it!=hsvCloud->end(); ++it) {
+			v.push_back(it->h);
+		}
+
+		double sum = std::accumulate(v.begin(), v.end(), 0.0);
+		double mean = sum / v.size();
+
+		double sq_sum = std::inner_product(v.begin(), v.end(), v.begin(), 0.0);
+		double stdev = std::sqrt(sq_sum / v.size() - mean * mean);
+		std::cout <<"media: "<<mean<<"   dev: "<<stdev<<std::endl;
+		stdev = std::max(stdev,5.0);
+		hmin = mean-2.0*stdev;
+		hmax = mean+2.0*stdev;
+		hmin = std::min(hmin,38.0f);
+		hmax = std::max(hmax,38.0f);
+	}
+
+	{
+		pcl::PointCloud<pcl::PointXYZHSV>::Ptr hsvCloud(new pcl::PointCloud<pcl::PointXYZHSV>());
+		std::vector<double> v;
+		pcl::PointCloudXYZRGBtoXYZHSV (*cloud,*hsvCloud);
+
+		for(pcl::PointCloud<pcl::PointXYZHSV>::iterator it = hsvCloud->begin(); it!=hsvCloud->end(); ++it) {
+			v.push_back(it->s);
+		}
+
+		double sum = std::accumulate(v.begin(), v.end(), 0.0);
+		double mean = sum / v.size();
+
+		double sq_sum = std::inner_product(v.begin(), v.end(), v.begin(), 0.0);
+		double stdev = std::sqrt(sq_sum / v.size() - mean * mean);
+		std::cout <<"media: "<<mean<<"   dev: "<<stdev<<std::endl;
+		stdev = std::max(stdev,5.0);
+		smin = mean-2.5*stdev;
+		smax = mean+2.5*stdev;
+	}
+}
+bool BallRecognition::findSphere(pcl::PointIndices::Ptr inliers,pcl::ModelCoefficients::Ptr coefficients)
+{
+	pcl::SACSegmentation<pointType> seg;
+	// Optional
+	seg.setOptimizeCoefficients (false);
+	// Mandatory
+	seg.setModelType (pcl::SACMODEL_SPHERE);
+	seg.setMethodType (pcl::SAC_RANSAC);
+	seg.setDistanceThreshold (0.01);
+
+	seg.setInputCloud (cloud);
+	seg.setRadiusLimits (0.09, 0.12);
+	//seg.setProbability(0.2);
+	seg.setMaxIterations(2000);
+	seg.segment (*inliers, *coefficients);
+
+
+	if(inliers->indices.size() < 10)
+		return false;
+	return true;
+}
+
+void BallRecognition::pclCallback(const sensor_msgs::PointCloud2::ConstPtr& c)
+{
+
+	pcl::fromROSMsg( *c,*cloud);
+
+	std::cout << "prima del grid"<<cloud->size()<<std::endl;
+	// filtra come voxel grid
+
+	filterVoxelGrid();
+	filterByColor();
+	//
+
+
+	//pcl::PointCloudXYZRGBtoXYZHSV (*cloud,*hsvCloud);
+
+	//pcl::PointCloudXYZRGBtoXYZHSV (*cloud,*hsvCloud);
+
+	// elimina i punti distanti
+	/*pcl::PassThrough<pointType> pass;
+	pass.setInputCloud (cloud);
+	pass.setFilterFieldName ("h");
+	pass.setFilterLimits (0.3, 0.7);
+	//pass.setFilterLimitsNegative (true);
+	pass.filter (*cloudTmp);
+	std::swap(cloud,cloudTmp);
+	*/
+
+	// trova le sfere
+
+
+
+
+	pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+	pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+	// Create the segmentation object
+
+
+	bool found = findSphere(inliers,coefficients);
+
+	if(!found) {
+		std::cerr <<"fallito"<<std::endl;
+	} else {
+		std::cerr << "Model coefficients: " << coefficients->values[0] << " "
+		          << coefficients->values[1] << " "
+		          << coefficients->values[2] << " "
+		          << coefficients->values[3] << std::endl;
+
+
+		pcl::ExtractIndices<pointType> extract;
+		extract.setInputCloud (cloud);
+		extract.setIndices (inliers);
+		extract.setNegative (false);
+		extract.filter (*cloudTmp);
+		std::swap(cloud,cloudTmp);
+
+
+		//updateFilterValues();
+	}
+
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
+	if(!viewer->updatePointCloud<pcl::PointXYZRGB>(cloud, rgb,"sample cloud")) {
+		viewer->addPointCloud<pcl::PointXYZRGB>(cloud, rgb, "sample cloud");
+		viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
+	}
+}
 
 int main(int argc, char** argv)
 {
-	ros::init(argc, argv, "image_converter");
-	ImageConverter ic;
-	ros::spin();
+
+	ros::init(argc, argv, "ball_recognition");
+	BallRecognition br;
+	br.spin();
 	return 0;
+
+
 }

@@ -1,0 +1,9 @@
+(Frozen) =>  (&DEL.SpeedModule ANY)  (&DEL.RotSpeed ANY) (RobotStatus FROZEN);
+
+(AND (SearchLeft) (NOT (PlayerVisible))) => (RobotStatus SEARCH_LEFT) 
+											(&DEL.RotSpeed ANY) 
+											(RotSpeed LEFT);
+(AND (SearchRight) (NOT (PlayerVisible))) =>(RobotStatus SEARCH_RIGHT) 
+											(&DEL.RotSpeed ANY)
+											(RotSpeed RIGHT);
+

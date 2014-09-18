@@ -11,3 +11,9 @@
 
 (Unreliability UNRELIABILITY)
 (SuggestionAvailable FUZZY_BOOLEAN)
+
+(RobotLinearSpeed LINEARSPEED)
+(RobotAngularSpeed ANGULARSPEED)
+
+(RobotStatus ROBOTSTATUS)
+

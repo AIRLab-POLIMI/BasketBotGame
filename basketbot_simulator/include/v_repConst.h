@@ -1,6 +1,6 @@
 // This file is part of V-REP, the Virtual Robot Experimentation Platform.
 // 
-// Copyright 2006-2014 Dr. Marc Andreas Freese. All rights reserved. 
+// Copyright 2006-2014 Coppelia Robotics GmbH. All rights reserved. 
 // marc@coppeliarobotics.com
 // www.coppeliarobotics.com
 // 
@@ -15,25 +15,28 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 // 
-// V-REP is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// V-REP IS DISTRIBUTED "AS IS", WITHOUT ANY EXPRESS OR IMPLIED
+// WARRANTY. THE USER WILL USE IT AT HIS/HER OWN RISK. THE ORIGINAL
+// AUTHORS AND COPPELIA ROBOTICS GMBH WILL NOT BE LIABLE FOR DATA LOSS,
+// DAMAGES, LOSS OF PROFITS OR ANY OTHER KIND OF LOSS WHILE USING OR
+// MISUSING THIS SOFTWARE.
+// 
+// See the GNU General Public License for more details.
 // 
 // You should have received a copy of the GNU General Public License
 // along with V-REP.  If not, see <http://www.gnu.org/licenses/>.
 // -------------------------------------------------------------------
 //
-// This file was automatically created for V-REP release V3.1.1 on March 26th 2014
+// This file was automatically created for V-REP release V3.1.2 on June 16th 2014
 
 #if !defined(V_REPCONST_INCLUDED_)
 #define V_REPCONST_INCLUDED_
 
-#define VREP_PROGRAM_VERSION_NB 30101
-#define VREP_PROGRAM_VERSION "3.1.1."
+#define VREP_PROGRAM_VERSION_NB 30102
+#define VREP_PROGRAM_VERSION "3.1.2."
 
-#define VREP_PROGRAM_REVISION_NB 0 //3
-#define VREP_PROGRAM_REVISION "(rev. 0)"
+#define VREP_PROGRAM_REVISION_NB 1
+#define VREP_PROGRAM_REVISION "(rev. 1)"
 
 /* Scene object types. Values are serialized */
 enum { 
@@ -253,6 +256,11 @@ enum { /* Check the documentation instead of comments below!! */
 		sim_message_eventcallback_proxsensorselectup, /* a "geometric" click select (mouse up) was registered. Enable with sim_intparam_prox_sensor_select_down. aux[0]=objectID, customData[0-2]=pt coord (floats), customData[3-5]=pt normal vector (floats)*/
 		sim_message_eventcallback_pickselectdown, /* a "pick" click select (mouse down) was registered. aux[0]=objectID */
 
+		sim_message_eventcallback_rmlpos, /* the command simRMLPos was called. The appropriate plugin should handle the call */
+		sim_message_eventcallback_rmlvel, /* the command simRMLVel was called. The appropriate plugin should handle the call */
+		sim_message_eventcallback_rmlstep, /* the command simRMLStep was called. The appropriate plugin should handle the call */
+		sim_message_eventcallback_rmlremove, /* the command simRMLRemove was called. The appropriate plugin should handle the call */
+		sim_message_eventcallback_rmlinfo, /* used internally */
 
 		sim_message_simulation_start_resume_request=0x1000,
 		sim_message_simulation_pause_request,
@@ -275,7 +283,7 @@ enum {
 		sim_displayattribute_ignorelayer	=0x0400,
 		sim_displayattribute_forvisionsensor	=0x0800,
 		sim_displayattribute_colorcodedpickpass	=0x1000,
-		sim_displayattribute_FREE2				=0x2000, /* free */
+		sim_displayattribute_colorcoded			=0x2000,
 		sim_displayattribute_trianglewireframe	=0x4000, 
 		sim_displayattribute_simplifyasboundingbox	=0x8000,
 		sim_displayattribute_thickEdges				=0x10000,
@@ -308,6 +316,7 @@ enum { /* type of arguments (input and output) for custom lua commands */
 	sim_lua_arg_float,
 	sim_lua_arg_string,
 	sim_lua_arg_invalid,
+	sim_lua_arg_charbuff,
 	sim_lua_arg_table=8
 };
 
@@ -576,20 +585,22 @@ enum { /* Integer parameters: */
 	sim_intparam_platform, /* can only be read */
 	sim_intparam_scene_unique_id, /* can only be read */
 	sim_intparam_work_thread_count, /* 0-256. 0 to disable, -1 to try to automatically set */
-	sim_intparam_mouse_x,
-	sim_intparam_mouse_y,
+	sim_intparam_mouse_x, /* can only be read */
+	sim_intparam_mouse_y, /* can only be read */
 	sim_intparam_core_count, /* can only be read */
 	sim_intparam_work_thread_calc_time_ms,
 	sim_intparam_idle_fps,
 	sim_intparam_prox_sensor_select_down,
 	sim_intparam_prox_sensor_select_up,
 	sim_intparam_stop_request_counter,
-	sim_intparam_program_revision /* Can only be read. See also sim_intparam_program_version */
+	sim_intparam_program_revision, /* Can only be read. See also sim_intparam_program_version */
+	sim_intparam_mouse_buttons /* can only be read */
 };
 
 enum { /* Float parameters: */
 	sim_floatparam_rand=0, /* random value (0.0-1.0) */
-	sim_floatparam_simulation_time_step
+	sim_floatparam_simulation_time_step,
+	sim_floatparam_stereo_distance
 };
 
 enum { /* String parameters: */
@@ -769,7 +780,8 @@ Remote API constants:
 *******************************************
 *******************************************/
 
-#define SIMX_VERSION 5  // max is 255!!!
+#define SIMX_VERSION 6  // max is 255!!!
+// version to 6 for release 3.1.2
 
 /*
 Messages sent/received look like this:
@@ -897,6 +909,8 @@ enum {	simx_cmdnull_start				=0,
 		simx_cmd_set_object_int_parameter,
 		simx_cmd_get_object_child,
 		simx_cmd_get_object_group_data,
+		simx_cmd_get_object_orientation2,
+		simx_cmd_get_object_position2,
 
 		simx_cmd8bytes_custom_start		=0x002800,
 
@@ -924,7 +938,9 @@ enum {	simx_cmdnull_start				=0,
 		simx_cmd_set_integer_signal,
 		simx_cmd_set_string_signal,
 		simx_cmd_append_string_signal,
+		simx_cmd_write_string_stream=simx_cmd_append_string_signal,
 		simx_cmd_get_and_clear_string_signal,
+		simx_cmd_read_string_stream,
 
 		simx_cmd1string_custom_start	=0x003800,
 
@@ -1070,6 +1086,7 @@ enum {	simros_strmcmdnull_start				=0,
 		simros_strmcmd_set_string_signal,
 		simros_strmcmd_reserved2,
 		simros_strmcmd_append_string_signal,
+		simros_strmcmd_set_joint_trajectory,
 
 		simros_strmcmdintstring_start			=0x004000,
 		/* from here on, commands are also identified by one additional int and one additional string */

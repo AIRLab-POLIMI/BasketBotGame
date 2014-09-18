@@ -4,12 +4,12 @@ project(ball_recognition)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED sensor_msgs
-cv_bridge
+find_package(catkin REQUIRED sensor_msgs pcl_conversions
 roscpp
-std_msgs
-image_transport)
+std_msgs)
 
+
+find_package(PCL 1.2 REQUIRED)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -89,7 +89,9 @@ catkin_package(
 ###########
 ## Build ##
 ###########
-
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 # include_directories(include)
@@ -108,7 +110,7 @@ add_executable(ball_recognition src/ball_recognition.cpp)
 
 ## Specify libraries to link a library or executable target against
  target_link_libraries(ball_recognition
-   ${catkin_LIBRARIES}
+   ${catkin_LIBRARIES} ${PCL_LIBRARIES}
  )
 
 #############

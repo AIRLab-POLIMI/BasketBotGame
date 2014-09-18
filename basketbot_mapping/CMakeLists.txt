@@ -40,10 +40,10 @@ find_package(catkin REQUIRED tf geometry_msgs std_msgs roscpp message_generation
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
- add_message_files(
-   FILES
-   PosPrediction.msg
- )
+# add_message_files(
+#   FILES
+#   PosPrediction.msg
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -60,11 +60,11 @@ find_package(catkin REQUIRED tf geometry_msgs std_msgs roscpp message_generation
 # )
 
 ## Generate added messages and services with any dependencies listed here
- generate_messages(
-   DEPENDENCIES
-   geometry_msgs
-   std_msgs  # Or other packages containing msgs
- )
+# generate_messages(
+#   DEPENDENCIES
+#   geometry_msgs
+#   std_msgs  # Or other packages containing msgs
+# )
 
 ###################################
 ## catkin specific configuration ##
@@ -96,15 +96,15 @@ link_directories(${EXTERNAL_SRC}/kalman)
 # )
 
 ## Declare a cpp executable
- add_executable(player_mapping src/player_mapping_kalman.cpp src/ros_mapping_bridge.cpp)
+# add_executable(player_mapping src/player_mapping_kalman.cpp src/ros_mapping_bridge.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(player_mapping ${catkin_EXPORTED_TARGETS})
+#add_dependencies(player_mapping ${catkin_EXPORTED_TARGETS})
 ## Specify libraries to link a library or executable target against
- target_link_libraries(player_mapping
-   ${catkin_LIBRARIES} kalman 
- )
+# target_link_libraries(player_mapping
+#   ${catkin_LIBRARIES} kalman 
+# )
 
 #############
 ## Install ##

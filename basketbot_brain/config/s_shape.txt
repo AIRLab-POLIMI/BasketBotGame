@@ -9,3 +9,10 @@
 (SNG (STEADY 0))
 (SNG (RIGHT -1))
 )
+
+(ROBOTSTATUS
+	(SNG (NORMAL  0 ))
+	(SNG (FROZEN  1 ))
+	(SNG (SEARCH_LEFT  2 ))
+	(SNG (SEARCH_RIGHT  3 ))
+)

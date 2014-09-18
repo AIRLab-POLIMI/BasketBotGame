@@ -4,7 +4,7 @@ project(basketbot_brain)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED roscpp roslib brian_wrapper)
+find_package(catkin REQUIRED roscpp roslib brian_wrapper player_tracker)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -85,7 +85,7 @@ catkin_package(
 ## Build ##
 ###########
 #set(EXTERNAL_SRC ${CMAKE_HOME_DIRECTORY}/../external_src)
-add_definitions(-DBRIAN_CONFIG_PATH="${PROJECT_SOURCE_DIR}/config" )
+#add_definitions(-DBRIAN_CONFIG_PATH="${PROJECT_SOURCE_DIR}/config" )
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
@@ -107,6 +107,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
  add_executable(basketbot_brain
         src/ros_brian_bridge.cpp
 	src/basketbot_brain.cpp
+	src/obstacles_listener.cpp
 )
 
 ## Add cmake target dependencies of the executable/library
@@ -115,6 +116,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Specify libraries to link a library or executable target against
  target_link_libraries(test_rules
+#brian_wrapper
    ${catkin_LIBRARIES} 
  )
 target_link_libraries(basketbot_brain

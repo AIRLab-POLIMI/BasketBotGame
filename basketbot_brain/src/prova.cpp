@@ -10,13 +10,13 @@ int main(int argc, char ** argv)
 	 * Il formato e':
 	 * nome valore
 	 */
-	std::string inputFile;
-	if(argc >= 2)
-		inputFile = std::string(argv[1]);
-	else
-		inputFile = "BrianTest.txt";
 	
-	std::ifstream infile(inputFile.c_str());
+	if(argc <2)
+	{
+		std::cout << "Usage: DataList.txt";
+		return 0;
+	}
+	std::ifstream infile(argv[1]);
 	if(!infile.is_open())
 	{
 		std::cout << "error opening file" << std::endl;
@@ -35,11 +35,11 @@ int main(int argc, char ** argv)
 				break;
 			input[name] = value;
 	}
-
+//std::string brian_config_path = ".";
 std::string brian_config_path = ros::package::getPath("basketbot_brain") + "/config";
-std::cout << brian_config_path <<std::endl;
+//std::cout << brian_config_path <<std::endl;
 	/* creo l'oggetto brian */
-	BrianWrapper brian(BRIAN_CONFIG_PATH,2);
+	BrianWrapper brian(brian_config_path,2);
 	
 	/* esegui una iterazione di brian */
 	output = brian.execute(input);

@@ -1,19 +1,19 @@
-/* A Bison parser, made by GNU Bison 2.5.  */
+/* A Bison parser, made by GNU Bison 3.0.2.  */
 
 /* Bison interface for Yacc-like parsers in C
-   
-      Copyright (C) 1984, 1989-1990, 2000-2011 Free Software Foundation, Inc.
-   
+
+   Copyright (C) 1984, 1989-1990, 2000-2013 Free Software Foundation, Inc.
+
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
@@ -26,53 +26,58 @@
    special exception, which will cause the skeleton and the resulting
    Bison output files to be licensed under the GNU General Public
    License without this special exception.
-   
+
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
-
-/* Tokens.  */
-#ifndef YYTOKENTYPE
-# define YYTOKENTYPE
-   /* Put the tokens into the symbol table, so that GDB and other debuggers
-      know about them.  */
-   enum yytokentype {
-     NAME = 258,
-     VALUE = 259,
-     LEFTPAR = 260,
-     RIGHTPAR = 261,
-     TRI = 262,
-     TOL = 263,
-     TOR = 264,
-     DIV = 265,
-     TRA = 266,
-     REC = 267,
-     SNG = 268
-   };
+#ifndef YY_SHAPE_SHAPEGRAM_TAB_H_INCLUDED
+# define YY_SHAPE_SHAPEGRAM_TAB_H_INCLUDED
+/* Debug traces.  */
+#ifndef YYDEBUG
+# define YYDEBUG 0
+#endif
+#if YYDEBUG
+extern int shapedebug;
 #endif
 
+/* Token type.  */
+#ifndef YYTOKENTYPE
+# define YYTOKENTYPE
+  enum yytokentype
+  {
+    NAME = 258,
+    VALUE = 259,
+    LEFTPAR = 260,
+    RIGHTPAR = 261,
+    TRI = 262,
+    TOL = 263,
+    TOR = 264,
+    DIV = 265,
+    TRA = 266,
+    REC = 267,
+    SNG = 268
+  };
+#endif
 
-
+/* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-typedef union YYSTYPE
+typedef union YYSTYPE YYSTYPE;
+union YYSTYPE
 {
-
-/* Line 2068 of yacc.c  */
-#line 22 "shapegram.y"
+#line 22 "shapegram.y" /* yacc.c:1909  */
 
   char * dataname;
   float number;
 
-
-
-/* Line 2068 of yacc.c  */
-#line 70 "shapegram.tab.h"
-} YYSTYPE;
+#line 73 "shapegram.tab.h" /* yacc.c:1909  */
+};
 # define YYSTYPE_IS_TRIVIAL 1
-# define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
 #endif
 
+
 extern YYSTYPE shapelval;
 
+int shapeparse (void);
 
+#endif /* !YY_SHAPE_SHAPEGRAM_TAB_H_INCLUDED  */

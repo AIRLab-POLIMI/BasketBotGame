@@ -1,2 +1,3 @@
 ( SpeedModule SPEEDMODULE )
 (RotSpeed ROTSPEED)
+(RobotStatus ROBOTSTATUS)

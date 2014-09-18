@@ -2,7 +2,7 @@
 
 
 ( level 2 suggestions 	suggestedSpeed.rul )
-
+( level 2 RobotStatus 	RobotStatus.rul )
 
 
  ( level 1 followGhost followGhost.rul )

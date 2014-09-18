@@ -14,11 +14,9 @@
 (AND (PlayerApproaching) (PlayerRear)) => (SpeedModule FORWARD);
 (AND (PlayerEscaping) (PlayerRear)) => (SpeedModule REVERSE);
 
-
-
-
-
 (PlayerLeft) => (RotSpeed LEFT);
 (PlayerRight) => (RotSpeed RIGHT);
 (PlayerFront) => (RotSpeed STEADY);
 
+(PlayerRunningCounterclockwise) =>(RotSpeed LEFT);
+(PlayerRunningClockwise) =>(RotSpeed RIGHT);

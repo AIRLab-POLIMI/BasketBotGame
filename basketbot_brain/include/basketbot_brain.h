@@ -1,5 +1,6 @@
 #ifndef BASKETBOT_BRAIN_H
 #define BASKETBOT_BRAIN_H
+#include <ros/ros.h>
 
 #include "BrianWrapper.h"
 class RosBrianBridge;
@@ -11,35 +12,33 @@ class BasketBotBrain
 	BrianWrapper brian;
 	BrianWrapper::DataContainer input, output;
 	void runBrian();
+	float applyShape(float,float);
 	
+	ros::Time lastUpdate;
+	ros::Duration elapsedTime;
+	//state 
+	enum State {NORMAL=0,FROZEN,SEARCH_LEFT, SEARCH_RIGHT} currentState;
 	
-	//STATE
-	float currentUnreliability;
-	float suggestedLinearSpeed;
-	float suggestedAngularSpeed;
-	float distance;
-	float angle;
-	float predictedVX;
-	float predictedVY;
+	float stateDuration;
+	
 	
 	//PARAMETERS
 	float distanceOffset;
 	float distanceSensitivity;
 	float rotationCommandSensitivity;
 
-	float outputSensitivity;
+	float playerSpeedSensitivity;
 	float reverseRotationThreshold;
 	float playerNotVisibleThreshold;
 	float playerLostThreshold;
-	
+	float outputSnappiness;
 	
 	
 public:
 	BasketBotBrain(RosBrianBridge *,std::string);
-	void setPlayerPosPrediction(float x,float y,float vx,float vy);
-	void setPlayerPosUnreliability(float u);
-	void setSuggestedCmdVel(float speed,float twist);
+	void freeze(float milliseconds);
 	void spinOnce();
+	void rotateAndSearch(float direction);
 	
 };
 
