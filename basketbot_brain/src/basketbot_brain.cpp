@@ -5,11 +5,36 @@
 
 const unsigned int rate = 30;
 
-
+void BasketBotBrain::checkUnreliability()
+{
+	float newUnreliability = messenger->getPlayerPositionUnreliability();
+	float oldUnreliability = input["Unreliability"];
+	
+	if(newUnreliability < playerNotVisibleThreshold and oldUnreliability > 1.0)
+	{
+		input["Unreliability"] = 0.5;
+	}
+	else if(newUnreliability > playerNotVisibleThreshold and oldUnreliability < 1.0)
+	{
+		input["Unreliability"] = 1.5;
+		latestPlayerLoss = ros::Time::now();
+		if(currentState == NORMAL)
+			rotateAndSearch(-input["PlayerVelocityY"]);
+	}
+	else if(newUnreliability > playerNotVisibleThreshold and (ros::Time::now()-latestPlayerLoss).toSec() > 5.0 
+	and oldUnreliability < 2.0)
+	{
+		std::cout <<"torno indietro"<< (ros::Time::now()-latestPlayerLoss).toSec()<<std::endl;
+		input["Unreliability"] = 2.5;
+		currentState=NORMAL;
+	}
+	
+	
+}
 void BasketBotBrain::rotateAndSearch(float direction)
 {
 	currentState = (direction<0)?SEARCH_RIGHT:SEARCH_LEFT;
-	stateDuration = 5.0; 
+	stateDuration = 5.0;
 
 }
 
@@ -37,14 +62,11 @@ void BasketBotBrain::runBrian()
 
 
 
-	float currentUnreliability = messenger->getPlayerPositionUnreliability();
-	if(input["Unreliability"]< playerNotVisibleThreshold && currentUnreliability >= playerNotVisibleThreshold)
-		rotateAndSearch(-input["PlayerVelocityY"]);
+	checkUnreliability();
 
 	input["RobotStatus"] = currentState;
 
 
-	input["Unreliability"] = (currentUnreliability -playerNotVisibleThreshold) +1;//currentUnreliability;
 
 	output = brian.execute(input);
 

@@ -13,8 +13,9 @@ class BasketBotBrain
 	BrianWrapper::DataContainer input, output;
 	void runBrian();
 	float applyShape(float,float);
-	
+	void checkUnreliability();
 	ros::Time lastUpdate;
+	ros::Time latestPlayerLoss;
 	ros::Duration elapsedTime;
 	//state 
 	enum State {NORMAL=0,FROZEN,SEARCH_LEFT, SEARCH_RIGHT} currentState;

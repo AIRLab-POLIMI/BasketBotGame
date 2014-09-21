@@ -1,10 +1,13 @@
-global_frame: world
-robot_base_frame: base_link_respondable
+global_frame: map
+robot_base_frame: base_link
 
 publish_frequency: 1.0
 footprint: [[-0.325, -0.325], [-0.325, 0.325], [0.325, 0.325], [0.46, 0.0], [0.325, -0.325]]
 
 plugins:
+  -
+    name: slam_layer
+    type: "costmap_2d::StaticLayer"
   -
     name: obstacle_layer
     type: "costmap_2d::ObstacleLayer"
@@ -15,15 +18,15 @@ plugins:
 obstacle_layer:
   observation_sources: base_scan
   base_scan:
-    topic: /camera/points
+    topic: /camera/depth_registered/points
     data_type: PointCloud2   
     clearing: true 
 
-update_frequency: 5.0
-publish_frequency: 2.0
+update_frequency: 2.0
+publish_frequency: 10.0
 static_map: false
 rolling_window: true
 width: 6.0
 height: 6.0
 resolution: 0.05
-
+transform_tolerance: 1.8

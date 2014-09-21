@@ -10,7 +10,7 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/point_types_conversion.h>
-
+#include <pcl/features/normal_3d.h>
 class BallRecognition
 {
 	typedef pcl::PointXYZRGB pointType;
@@ -18,7 +18,7 @@ class BallRecognition
 	ros::Subscriber pclSubscriber;
 	void pclCallback(const sensor_msgs::PointCloud2::ConstPtr&);
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;
-
+	
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> createViewer();
 
 	pcl::PointCloud<pointType>::Ptr cloud;
@@ -162,7 +162,16 @@ void BallRecognition::updateFilterValues()
 }
 bool BallRecognition::findSphere(pcl::PointIndices::Ptr inliers,pcl::ModelCoefficients::Ptr coefficients)
 {
-	pcl::SACSegmentation<pointType> seg;
+	 pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree3 (new pcl::search::KdTree<pcl::PointXYZRGB> ());
+	pcl::PointCloud<pcl::Normal>::Ptr cloud_normals3 (new pcl::PointCloud<pcl::Normal> ()); // for sphere
+	pcl::NormalEstimation<pcl::PointXYZRGB, pcl::Normal> normal_estimation;
+	normal_estimation.setSearchMethod (tree3);
+normal_estimation.setInputCloud (cloud);
+normal_estimation.setKSearch (25);
+normal_estimation.compute (*cloud_normals3);
+	
+	
+	pcl::SACSegmentationFromNormals<pcl::PointXYZRGB, pcl::Normal> seg;
 	// Optional
 	seg.setOptimizeCoefficients (false);
 	// Mandatory
@@ -171,9 +180,11 @@ bool BallRecognition::findSphere(pcl::PointIndices::Ptr inliers,pcl::ModelCoeffi
 	seg.setDistanceThreshold (0.01);
 
 	seg.setInputCloud (cloud);
+	seg.setInputNormals (cloud_normals3);
 	seg.setRadiusLimits (0.09, 0.12);
 	//seg.setProbability(0.2);
 	seg.setMaxIterations(2000);
+
 	seg.segment (*inliers, *coefficients);
 
 

@@ -1,0 +1,15 @@
+<launch>
+	<!-- joy node -->
+	<node respawn="true" pkg="joy" type="joy_node" name="joy_node">
+		<param name="dev" type="string" value="/dev/input/js0" />
+		<param name="deadzone" value="0.1" />
+	</node>
+
+	<!-- tiltone teleop node-->
+	<rosparam file="$(find tiltone)/params/teleop.yaml" command="load" />
+	<param name="topic" value="/tiltone/velocityD" />	
+        <node pkg="r2p" type="teleop_joy.py" name="titlone_teleop">
+	
+	</node>
+
+</launch>

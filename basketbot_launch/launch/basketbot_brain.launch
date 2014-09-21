@@ -1,0 +1,6 @@
+<launch>
+ 
+   <node name="player_recognition" pkg="player_tracker" type="player_recognition" output="screen" />    
+  
+   <node name="basketbot_brain" pkg="basketbot_brain" type="basketbot_brain" output="screen" />
+</launch>

@@ -6,6 +6,7 @@
 #include <sensor_msgs/PointCloud.h>
 #include <nav_msgs/Odometry.h>
 #include "playerEKF.h"
+#include "pcl_ros/point_cloud.h"
 
 float threshold = 1.0;
 unsigned int RATE = 30;
@@ -16,7 +17,7 @@ float applySlope(double input, double zero,double max)
 	l = std::max<double>(l,0.0);
 	l = std::min<double>(l,1.0);
 	return l;
-	
+
 }
 
 
@@ -33,6 +34,8 @@ class PlayerTracker
 {
 	ros::NodeHandle node;
 	ros::Subscriber playerSubscriber;
+	ros::Subscriber playerSubscriber2;
+
 	ros::Subscriber faceSubscriber;
 	ros::Subscriber odometrySubscriber;
 
@@ -45,6 +48,8 @@ class PlayerTracker
 	ros::Time lastFaceUpdate;
 
 	void playerPosCallback(const openni_tracker::COMList::ConstPtr& msg);
+	void playerPosCallback2(const pcl::PointCloud<pcl::PointXYZL>::ConstPtr& msg);
+
 	void facePosCallback(const sensor_msgs::PointCloud::ConstPtr& msg);
 	void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
@@ -79,6 +84,7 @@ void PlayerTracker::spin()
 PlayerTracker::PlayerTracker()
 {
 	playerSubscriber = node.subscribe("COMList", 2, &PlayerTracker::playerPosCallback,this);
+	playerSubscriber2 = node.subscribe("COMPoints", 2, &PlayerTracker::playerPosCallback2,this);
 	faceSubscriber = node.subscribe("/face_detector/faces_cloud", 2, &PlayerTracker::facePosCallback,this);
 	odometrySubscriber = node.subscribe("/odom", 2, &PlayerTracker::odometryCallback,this);
 	predictionPublisher = node.advertise<player_tracker::PosPrediction>("PosPrediction",10);
@@ -107,40 +113,40 @@ float PlayerTracker::calculateSpeed(unsigned int playerID)
 float PlayerTracker::calculateFaceDistance(unsigned int playerID)
 {
 	std::vector<float> res = potentialPlayers[playerID].playerFilter.getStatus();
-	
+
 	float distance = std::numeric_limits<float>::infinity();
 	if(ros::Time::now()-lastFaceUpdate > ros::Duration(0.3))
 		return distance;
-	
-	
+
+
 	float currentX = res[0];
 	float currentY = res[1];
-	
-	
-	
+
+
+
 	for(std::vector<geometry_msgs::Point32>::const_iterator it = faces.begin(); it!= faces.end(); it++) {
-		
+
 		float dx = it->z - res[0];
 		float dy = -it->x - res[1];
-		
+
 		float d = sqrt(dx*dx + dy*dy);
 		ROS_INFO("dati:  %f %f   %f %f ",it->z , res[0],-it->x , res[1]);
 		distance = std::min(d,distance);
 	}
 	return distance;
-	
-	
+
+
 }
 
 float PlayerTracker::calculateScore(unsigned int playerID)
 {
 
-	float speed = calculateSpeed(playerID); 
+	float speed = calculateSpeed(playerID);
 	float faceDistance = calculateFaceDistance(playerID);
-	
+
 	float speedScore = 0.75 * applySlope(speed,0.2,0.4);
 	float faceScore = 0.75 * applySlope(faceDistance,0.4,0.2);
-	
+
 	ROS_INFO("giocatore %d, vel %f (%f),faccia %f(%f)",playerID,speed,speedScore,faceDistance,faceScore);
 	return speedScore + faceScore;
 
@@ -171,9 +177,66 @@ void PlayerTracker::facePosCallback(const sensor_msgs::PointCloud::ConstPtr& msg
 
 	}
 }
-void PlayerTracker::playerPosCallback(const openni_tracker::COMList::ConstPtr& msg)
+
+void PlayerTracker::playerPosCallback2(const pcl::PointCloud<pcl::PointXYZL>::ConstPtr& msg)
 {
 	ros::Duration d = ros::Time::now()-lastUpdate;
+	elapsedTime = d.toSec();
+	lastUpdate = ros::Time::now();
+
+	oddIteration = !oddIteration;
+
+	for(pcl::PointCloud<pcl::PointXYZL>::const_iterator it= msg->points.begin(); it!= msg->points.end(); ++it) {
+		int id = it->label;
+		ROS_INFO("poscall: %d   %f %f %f",id,it->x,it->y,it->z);
+		if(!potentialPlayers[id].valid) {
+			std::cout <<"added a new player"<<std::endl;
+			playerEKF e;
+			std::swap(potentialPlayers[id].playerFilter, e);
+			potentialPlayers[id].valid = true;
+			potentialPlayers[id].score = -1;
+		}
+
+		potentialPlayers[id].playerFilter.updateOdometry(robotLinearSpeed, robotAngularSpeed);
+
+		float distanza = sqrt(it->x * it->x +it->z*it->z);
+		float angolo = atan2(-it->x,it->z);
+		if(distanza > 0.1)
+			potentialPlayers[id].playerFilter.updatePlayerPos(distanza,angolo);
+
+
+		potentialPlayers[id].score = calculateScore(id);
+
+
+		potentialPlayers[id].oddIteration = oddIteration;
+	}
+	for(unsigned int i = 0; i < potentialPlayers.size(); i++) {
+		PlayerInfo &it = potentialPlayers[i];
+		if(it.oddIteration != oddIteration && it.valid) {
+			it.valid = false;
+			if(i == currentPlayer)
+				currentPlayer = -1;
+			std::cout << "lost a player"<<std::endl;
+		}
+	}
+
+	int bestPlayer = getBestPlayer();
+	if(bestPlayer>=0 && potentialPlayers[bestPlayer].score > threshold  ) {
+		if(currentPlayer == -1 || potentialPlayers[bestPlayer].score > potentialPlayers[currentPlayer].score) {
+			currentPlayer=bestPlayer;
+			ROS_INFO("tracking player %d",currentPlayer);
+		}
+	}
+
+
+	if(currentPlayer != -1)
+
+		publishPlayerInfo(currentPlayer);
+}
+
+void PlayerTracker::playerPosCallback(const openni_tracker::COMList::ConstPtr& msg)
+{
+	/*ros::Duration d = ros::Time::now()-lastUpdate;
 	elapsedTime = d.toSec();
 	lastUpdate = ros::Time::now();
 
@@ -181,7 +244,7 @@ void PlayerTracker::playerPosCallback(const openni_tracker::COMList::ConstPtr& m
 	std::vector<openni_tracker::COMData>::const_iterator it;
 	for(it = msg->list.begin(); it!= msg->list.end(); ++it) {
 		int id = it->id;
-
+		ROS_INFO("poscall: %d   %f %f %f",id,it->x,it->y,it->z);
 		if(!potentialPlayers[id].valid) {
 			std::cout <<"added a new player"<<std::endl;
 			playerEKF e;
@@ -227,7 +290,7 @@ void PlayerTracker::playerPosCallback(const openni_tracker::COMList::ConstPtr& m
 
 		publishPlayerInfo(currentPlayer);
 
-
+*/
 
 }
 

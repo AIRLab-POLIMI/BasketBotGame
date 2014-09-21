@@ -5,6 +5,7 @@ project(player_tracker)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED  COMPONENTS roscpp tf message_generation PCL)
+find_package( PCL REQUIRED )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -89,7 +90,12 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include kalman)
+
+
+include_directories(include kalman ${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+
 link_directories(
 	${PROJECT_SOURCE_DIR}/kalman
 )
@@ -118,7 +124,7 @@ add_executable(face_recognition_watchdog src/face_recognition_watchdog.cpp )
  add_dependencies(player_tracker player_tracker_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(player_recognition ${catkin_LIBRARIES} kalman)
+target_link_libraries(player_recognition ${catkin_LIBRARIES} kalman ${PCL_LIBRARIES})
 
 target_link_libraries(player_tracker ${catkin_LIBRARIES} kalman)
 target_link_libraries(face_recognition_watchdog ${catkin_LIBRARIES} )
