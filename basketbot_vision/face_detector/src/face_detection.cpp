@@ -241,7 +241,7 @@ namespace people {
 	depth_topic_ = ros::names::clean(camera_ + "/" + depth_ns_ + "/" + depth_image_);
 	camera_info_topic_ = ros::names::clean(camera_ + "/rgb/camera_info");
 	depth_info_topic_ = ros::names::clean(camera_ + "/" + depth_ns_ + "/camera_info");
-
+	std::cout << camera_topic_ << depth_topic_ << camera_info_topic_<<depth_info_topic_<<std::endl;
 	local_nh.param("fixed_frame", fixed_frame_, std::string("camera_rgb_optical_frame"));
 
 	if (approx)

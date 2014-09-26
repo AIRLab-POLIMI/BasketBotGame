@@ -1,15 +1,23 @@
 <launch>
 
-  <arg name="camera" default="camera" />
+<!--  <arg name="camera" default="/camera" />
+  <arg name="image_topic" default="image" />
+  <arg name="depth_topic" default="image" />
+  <arg name="fixed_frame" default="camera_rgb_optical_frame" />
+  <arg name="depth_ns" default="depth" />
+-->
+
+<arg name="camera" default="camera" />
   <arg name="image_topic" default="image_rect_color" />
   <arg name="depth_topic" default="hw_registered/image_rect_raw" />
   <arg name="fixed_frame" default="camera_rgb_optical_frame" />
   <arg name="depth_ns" default="depth_registered" />
 
+
   <!--include file="$(find openni_launch)/launch/openni.launch"/-->
-  <node name="$(anon dynparam)" pkg="dynamic_reconfigure" type="dynparam" args="set_from_parameters $(arg camera)/driver">
+<!--  <node name="$(anon dynparam)" pkg="dynamic_reconfigure" type="dynparam" args="set_from_parameters $(arg camera)/driver">
     <param name="depth_registration" type="bool" value="true" />
-  </node>
+  </node>-->
 
  <node pkg="face_detector" type="face_detector" name="face_detector" output="screen" respawn="true">
     <remap from="camera" to="$(arg camera)" />

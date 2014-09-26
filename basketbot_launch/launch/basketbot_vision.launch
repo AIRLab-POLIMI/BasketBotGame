@@ -6,5 +6,5 @@
    <node name="openni_tracker" pkg="openni_tracker" type="openni_tracker" />
     
    <node name="watchdog" pkg="player_tracker" type="face_recognition_watchdog" />
-
+  <node pkg="tf" type="static_transform_publisher" name="link2_broadcaster" args="0 0 0 1.5708 0 -1.5708 camera_link camera_link2 30" />
 </launch>

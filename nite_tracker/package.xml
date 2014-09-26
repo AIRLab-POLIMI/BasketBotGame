@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>basketbot_reactions</name>
+  <name>nite_tracker</name>
   <version>0.0.0</version>
-  <description>The basketbot_reactions package</description>
+  <description>The nite_tracker package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
@@ -19,7 +19,7 @@
   <!-- Url tags are optional, but mutiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/basketbot_reactions</url> -->
+  <!-- <url type="website">http://wiki.ros.org/nite_tracker</url> -->
 
 
   <!-- Author tags are optional, mutiple are allowed, one per tag -->
@@ -33,6 +33,9 @@
   <!-- Examples: -->
   <!-- Use build_depend for packages you need at compile time: -->
   <!--   <build_depend>message_generation</build_depend> -->
+
+  <build_depend>nodelet</build_depend>
+<run_depend>nodelet</run_depend>
   <!-- Use buildtool_depend for build tool packages: -->
   <!--   <buildtool_depend>catkin</buildtool_depend> -->
   <!-- Use run_depend for packages you need at runtime: -->
@@ -48,6 +51,7 @@
     <!-- <metapackage/> -->
 
     <!-- Other tools can request additional information be placed here -->
-
+    <nodelet plugin="${prefix}/nite_tracker_nodelets.xml"/>
+  
   </export>
 </package>

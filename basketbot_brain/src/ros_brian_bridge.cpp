@@ -4,6 +4,7 @@
 #include "RosBrianBridge.h"
 std::string brian_config_path = ros::package::getPath("basketbot_brain") + "/config";
 
+float RosBrianBridge::maxSpeeds = 0.25;
 
 void RosBrianBridge::setSpeed(float v, float rot)
 {
@@ -14,11 +15,10 @@ void RosBrianBridge::setSpeed(float v, float rot)
 
 
 	//limit values
-	float maxV = 0.25, maxR=0.25;
-	v=v>maxV?maxV:v;
-	v=v<-maxV?-maxV:v;
-	rot=rot>maxV?maxV:rot;
-	rot=rot<-maxV?-maxV:rot;
+	float maxV = maxSpeeds,maxR = maxSpeeds;
+	v=std::min(std::max(v,-maxV),maxV);
+	rot=std::min(std::max(rot,-maxR),maxR);
+	
 
 	r2p::Velocity ve;
 	ve.x = v;
@@ -32,17 +32,17 @@ RosBrianBridge::RosBrianBridge():brain(this,brian_config_path)
 	commandsPublisher = node.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
 	commandsPublisherTiltone = node.advertise<r2p::Velocity>("/tiltone/velocity", 10);
 
-	suggestedCmdVel = node.subscribe("suggested_cmd_vel", 2,&RosBrianBridge::desiredCmdVelKeyCallback,this);
-	suggestedCmdVelJ = node.subscribe("/tiltone/velocityD", 2,&RosBrianBridge::desiredCmdVelJoyCallback,this);
-	
-	
+	suggestedCmdVelKey = node.subscribe("suggested_cmd_vel", 2,&RosBrianBridge::desiredCmdVelKeyCallback,this);
+	suggestedCmdVelJoy = node.subscribe("/tiltone/velocityD", 2,&RosBrianBridge::desiredCmdVelJoyCallback,this);
+
+
 	suggestedLinearSpeed = suggestedAngularSpeed = 0;
 
 }
 
 void RosBrianBridge::desiredCmdVelJoyCallback(const r2p::Velocity::ConstPtr& msg)
 {
-	float r = -msg->w / 10.0;
+	float r = msg->w / 10.0;
 
 	float v = msg->x;
 
@@ -53,7 +53,7 @@ void RosBrianBridge::desiredCmdVelJoyCallback(const r2p::Velocity::ConstPtr& msg
 void RosBrianBridge::desiredCmdVelKeyCallback(const geometry_msgs::Twist::ConstPtr& msg)
 {
 	float v = 5.0*msg->linear.x;
-	float r = -msg->angular.z;
+	float r = msg->angular.z;
 
 	suggestedLinearSpeed = v;
 	suggestedAngularSpeed=r;

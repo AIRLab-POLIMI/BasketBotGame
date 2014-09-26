@@ -1,0 +1,10 @@
+<!-- OpenNI2 driver nodelet publisher -->
+<library path="lib/libnite_tracker_nodelet">
+
+  <class name="nite_tracker/NiteTrackerNodelet" type="nite_tracker::NiteTrackerNodelet" base_class_type="nodelet::Nodelet">
+    <description>
+      nite camera driver nodelet.
+    </description>
+  </class>
+
+</library>

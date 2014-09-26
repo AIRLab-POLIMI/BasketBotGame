@@ -16,8 +16,9 @@ class RosBrianBridge
 	ros::Subscriber predictionSubscriber;
 	ros::Publisher commandsPublisher;
 	ros::Publisher commandsPublisherTiltone;
-	ros::Subscriber suggestedCmdVel;
-	ros::Subscriber suggestedCmdVelJ;
+	ros::Subscriber suggestedCmdVelKey;
+	ros::Subscriber suggestedCmdVelJoy;
+	static float maxSpeeds;
 	BasketBotBrain brain;
 	void predictionCallback(const player_tracker::PosPrediction::ConstPtr& msg);
 	void desiredCmdVelKeyCallback(const geometry_msgs::Twist::ConstPtr& msg);

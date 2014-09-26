@@ -72,7 +72,7 @@ void BallRecognition::filterVoxelGrid()
 {
 	pcl::VoxelGrid<pointType> sor;
 	sor.setInputCloud (cloud);
-	sor.setLeafSize (0.005f, 0.005f, 0.005f);
+	sor.setLeafSize (0.002f, 0.002f, 0.002f);
 	sor.filter (*cloudTmp);
 	std::swap(cloud,cloudTmp);
 
@@ -177,7 +177,7 @@ normal_estimation.compute (*cloud_normals3);
 	// Mandatory
 	seg.setModelType (pcl::SACMODEL_SPHERE);
 	seg.setMethodType (pcl::SAC_RANSAC);
-	seg.setDistanceThreshold (0.01);
+	seg.setDistanceThreshold (0.1);
 
 	seg.setInputCloud (cloud);
 	seg.setInputNormals (cloud_normals3);
@@ -249,7 +249,7 @@ void BallRecognition::pclCallback(const sensor_msgs::PointCloud2::ConstPtr& c)
 		std::swap(cloud,cloudTmp);
 
 
-		//updateFilterValues();
+		updateFilterValues();
 	}
 
 	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);

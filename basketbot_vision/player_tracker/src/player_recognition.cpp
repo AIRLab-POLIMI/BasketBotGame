@@ -1,12 +1,12 @@
 #include <ros/ros.h>
 
-#include <openni_tracker/COMList.h>
 #include <tf/transform_broadcaster.h>
 #include <player_tracker/PosPrediction.h>
 #include <sensor_msgs/PointCloud.h>
 #include <nav_msgs/Odometry.h>
 #include "playerEKF.h"
 #include "pcl_ros/point_cloud.h"
+#include <limits>
 
 float threshold = 1.0;
 unsigned int RATE = 30;
@@ -33,7 +33,6 @@ struct PlayerInfo {
 class PlayerTracker
 {
 	ros::NodeHandle node;
-	ros::Subscriber playerSubscriber;
 	ros::Subscriber playerSubscriber2;
 
 	ros::Subscriber faceSubscriber;
@@ -47,7 +46,6 @@ class PlayerTracker
 	std::vector<geometry_msgs::Point32> faces;
 	ros::Time lastFaceUpdate;
 
-	void playerPosCallback(const openni_tracker::COMList::ConstPtr& msg);
 	void playerPosCallback2(const pcl::PointCloud<pcl::PointXYZL>::ConstPtr& msg);
 
 	void facePosCallback(const sensor_msgs::PointCloud::ConstPtr& msg);
@@ -83,7 +81,6 @@ void PlayerTracker::spin()
 
 PlayerTracker::PlayerTracker()
 {
-	playerSubscriber = node.subscribe("COMList", 2, &PlayerTracker::playerPosCallback,this);
 	playerSubscriber2 = node.subscribe("COMPoints", 2, &PlayerTracker::playerPosCallback2,this);
 	faceSubscriber = node.subscribe("/face_detector/faces_cloud", 2, &PlayerTracker::facePosCallback,this);
 	odometrySubscriber = node.subscribe("/odom", 2, &PlayerTracker::odometryCallback,this);
@@ -229,75 +226,21 @@ void PlayerTracker::playerPosCallback2(const pcl::PointCloud<pcl::PointXYZL>::Co
 	}
 
 
-	if(currentPlayer != -1)
-
+	
 		publishPlayerInfo(currentPlayer);
 }
 
-void PlayerTracker::playerPosCallback(const openni_tracker::COMList::ConstPtr& msg)
-{
-	/*ros::Duration d = ros::Time::now()-lastUpdate;
-	elapsedTime = d.toSec();
-	lastUpdate = ros::Time::now();
 
-	oddIteration = !oddIteration;
-	std::vector<openni_tracker::COMData>::const_iterator it;
-	for(it = msg->list.begin(); it!= msg->list.end(); ++it) {
-		int id = it->id;
-		ROS_INFO("poscall: %d   %f %f %f",id,it->x,it->y,it->z);
-		if(!potentialPlayers[id].valid) {
-			std::cout <<"added a new player"<<std::endl;
-			playerEKF e;
-			std::swap(potentialPlayers[id].playerFilter, e);
-			potentialPlayers[id].valid = true;
-			potentialPlayers[id].score = -1;
-		}
-
-		potentialPlayers[id].playerFilter.updateOdometry(robotLinearSpeed, robotAngularSpeed);
-
-		float distanza = sqrt(it->x * it->x +it->z*it->z);
-		float angolo = atan2(-it->x,it->z);
-		if(distanza > 0.1)
-			potentialPlayers[id].playerFilter.updatePlayerPos(distanza,angolo);
-
-
-		potentialPlayers[id].score = calculateScore(id);
-
-
-		potentialPlayers[id].oddIteration = oddIteration;
-	}
-
-	for(unsigned int i = 0; i < potentialPlayers.size(); i++) {
-		PlayerInfo &it = potentialPlayers[i];
-		if(it.oddIteration != oddIteration && it.valid) {
-			it.valid = false;
-			if(i == currentPlayer)
-				currentPlayer = -1;
-			std::cout << "lost a player"<<std::endl;
-		}
-	}
-
-	int bestPlayer = getBestPlayer();
-	if(bestPlayer>=0 && potentialPlayers[bestPlayer].score > threshold  ) {
-		if(currentPlayer == -1 || potentialPlayers[bestPlayer].score > potentialPlayers[currentPlayer].score) {
-			currentPlayer=bestPlayer;
-			ROS_INFO("tracking player %d",currentPlayer);
-		}
-	}
-
-
-	if(currentPlayer != -1)
-
-		publishPlayerInfo(currentPlayer);
-
-*/
-
-}
 
 void PlayerTracker::publishPlayerInfo(int player)
 {
-	PlayerInfo  &it = potentialPlayers[currentPlayer];
+	
+	player_tracker::PosPrediction pred;
 
+
+	if(player > -1)
+	{
+		PlayerInfo  &it = potentialPlayers[currentPlayer];
 	std::vector<float> res = it.playerFilter.getStatus();
 	tf::Transform tr;
 	tr.setRotation( tf::Quaternion(0,0 , 0, 1) );
@@ -305,13 +248,21 @@ void PlayerTracker::publishPlayerInfo(int player)
 	transformBroadcaster.sendTransform(tf::StampedTransform(tr, ros::Time::now(), "base_link_respondable", "bill_filtered"));
 	tr.setOrigin(tf::Vector3(res[2]*2.0,res[3]*2.0,0.0));
 	transformBroadcaster.sendTransform(tf::StampedTransform(tr, ros::Time::now(), "bill_filtered", "bill_filtered_vel"));
-	player_tracker::PosPrediction pred;
 	pred.position.x = res[0];
 	pred.position.y = res[1];
 	pred.velocity.x = res[2];
 	pred.velocity.y = res[3];
 	pred.unreliability = sqrt(res[4] + res[5]);
-
+	}
+	else
+	{
+		pred.position.x = 0;
+	pred.position.y = 0;
+	pred.velocity.x = 0;
+	pred.velocity.y = 0;
+	pred.unreliability = std::numeric_limits<double>::max();
+		
+	}
 	//std::cout <<"unrel: "<<pred.unreliability<<" "<<res[4]<<" "<<res[5]<<std::endl;
 	predictionPublisher.publish(pred);
 

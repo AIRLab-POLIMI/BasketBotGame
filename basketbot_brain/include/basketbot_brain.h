@@ -33,7 +33,7 @@ class BasketBotBrain
 	float playerNotVisibleThreshold;
 	float playerLostThreshold;
 	float outputSnappiness;
-	
+	void setState(State, float seconds = 5.0);
 	
 public:
 	BasketBotBrain(RosBrianBridge *,std::string);

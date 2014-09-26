@@ -19,7 +19,7 @@ void BasketBotBrain::checkUnreliability()
 		input["Unreliability"] = 1.5;
 		latestPlayerLoss = ros::Time::now();
 		if(currentState == NORMAL)
-			rotateAndSearch(-input["PlayerVelocityY"]);
+			;//rotateAndSearch(-input["PlayerVelocityY"]);
 	}
 	else if(newUnreliability > playerNotVisibleThreshold and (ros::Time::now()-latestPlayerLoss).toSec() > 5.0 
 	and oldUnreliability < 2.0)
@@ -33,8 +33,8 @@ void BasketBotBrain::checkUnreliability()
 }
 void BasketBotBrain::rotateAndSearch(float direction)
 {
-	currentState = (direction<0)?SEARCH_RIGHT:SEARCH_LEFT;
-	stateDuration = 5.0;
+	setState((direction<0)?SEARCH_RIGHT:SEARCH_LEFT,5.0);
+	
 
 }
 
@@ -106,10 +106,17 @@ float BasketBotBrain::applyShape(float input,float shape)
 void BasketBotBrain::freeze(float seconds)
 {
 //	stateDuration = ros::Duration(seconds);
-	currentState = FROZEN;
+	setState(FROZEN,seconds);
+
+
+}
+
+void BasketBotBrain::setState(State s, float seconds)
+{
+	currentState = s;
 	stateDuration = seconds;
 
-
+	
 }
 void BasketBotBrain::spinOnce()
 {
