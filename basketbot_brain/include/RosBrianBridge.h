@@ -24,6 +24,9 @@ class RosBrianBridge
 	void desiredCmdVelKeyCallback(const geometry_msgs::Twist::ConstPtr& msg);
 	void desiredCmdVelJoyCallback(const r2p::Velocity::ConstPtr& msg);
 	
+	ros::Time last_joy_suggestion;
+	
+	
 	//STATE
 	float currentUnreliability;
 	float suggestedLinearSpeed;

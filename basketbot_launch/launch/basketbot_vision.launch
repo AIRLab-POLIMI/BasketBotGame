@@ -1,10 +1,15 @@
 <launch>
  
   <include file="$(find basketbot_launch)/launch/basketbot_openni.launch" />
- <include file="$(find basketbot_launch)/launch/face_detector.rgbd.launch" />
+<!-- <include file="$(find basketbot_launch)/launch/face_detector.rgbd.launch" /> -->
   
-   <node name="openni_tracker" pkg="openni_tracker" type="openni_tracker" />
+<!--   <node name="openni_tracker" pkg="openni_tracker" type="openni_tracker" /> -->
     
-   <node name="watchdog" pkg="player_tracker" type="face_recognition_watchdog" />
-  <node pkg="tf" type="static_transform_publisher" name="link2_broadcaster" args="0 0 0 1.5708 0 -1.5708 camera_link camera_link2 30" />
+<!--   <node name="watchdog" pkg="player_tracker" type="face_recognition_watchdog" />-->
+  <node pkg="tf" type="static_transform_publisher" name="link2_broadcaster" args="0 0 0 0 0 1.5708 camera_link camera_link2 30" />
+<group ns="tracker">
+<node name="face_recognition" pkg="nite_tracker" type="face_recognition_standalone" />
+<node pkg="nodelet" type="nodelet" name="drivere" args="load nite_tracker/NiteTrackerNodelet /camera/camera_nodelet_manager" respawn="false" />
+</group>
 </launch>
+

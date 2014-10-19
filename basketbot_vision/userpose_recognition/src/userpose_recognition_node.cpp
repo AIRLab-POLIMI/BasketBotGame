@@ -1,140 +1,126 @@
-#include <ros/ros.h>
-#include <tf/transform_listener.h>
-#include <tf/transform_broadcaster.h>
-#include <geometry_msgs/Twist.h>
-#include <geometry_msgs/Vector3.h>
 #include <iostream>
 #include <sstream>
-class UserposeRecognition
+#include <boost/math/constants/constants.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/thread/thread.hpp>
+
+#include "UserPoseDisplay.h"
+#include "userpose_data.h"
+#include <fstream>
+#include "userpose_recognition.h"
+
+namespace std
 {
-	tf::TransformListener transformListener;
-	tf::TransformBroadcaster transformBroadcaster;
-	ros::Publisher debugPublisher;
-	ros::NodeHandle nh;
-	void readBodyTransform(unsigned int,std::string,std::string,std::string,tf::StampedTransform&);
-public:
-	UserposeRecognition();
-	void readFrames();
-	
-};
-void UserposeRecognition::readBodyTransform(unsigned int user,std::string bodySide,std::string srcFrame,std::string dstFrame,tf::StampedTransform& tfs)
+string operator<<(string s,int n)
 {
-	std::ostringstream srcss;
-	srcss << bodySide <<"_"<<srcFrame<<"_"<<user;
-	std::string source = srcss.str();
-	
-	std::ostringstream dstss;
-	dstss << bodySide <<"_"<<dstFrame<<"_"<<user;
-		std::string destination = dstss.str();
-	transformListener.lookupTransform ( source,destination,ros::Time(0),tfs);
-	
+	stringstream ss;
+	ss<<s<<n;
+	return ss.str();
 }
+}
+
+bool UserposeRecognition::loadData(std::string file)
+{
+	try {
+
+		YAML::Node config = YAML::LoadFile(file);
+		trainingSet = config.as<std::vector<UserPoseData> >();
+
+	} catch(...) {
+		return false;
+	}
+	return true;
+}
+bool UserposeRecognition::saveData(std::string file)
+{
+	YAML::Node node;
+	node = trainingSet;
+	std::ofstream fout(file.c_str());
+	fout << node;
+	return true;
+}
+
+
+int UserposeRecognition::findNearest(UserPoseData & data,float *retDist)
+{
+	if(trainingSet.size() == 0)
+		return -1;
+	int ret = 0;
+	float dist = data-trainingSet[0];
+	for(int i = 1; i<trainingSet.size(); i++) {
+		float d = data-trainingSet[i];
+		if(d<dist) {
+			dist = d;
+			ret = i;
+		}
+	}
+	if(retDist)
+		*retDist = dist;
+	return ret;
+
+}
+
 void printQuaternion(tf::Quaternion& q)
 {
 	std::cout << q[0]<<"\t"<<q[1]<<"\t"<<q[2]<<"\t"<<q[3]<<std::endl;
-	
-	
 }
-void UserposeRecognition::readFrames()
+
+void UserposeRecognition::radiansToDegrees(std::vector<float> & v)
 {
-	geometry_msgs::Twist t;
-	tf::StampedTransform elbow;
-	
-	try{
-		//readBodyTransform(1,"left","shoulder","elbow",elbow);
-		transformListener.lookupTransform ( "torso_1","left_shoulder_1",ros::Time(0),elbow);
-	}
-	catch(...)
-	{
-		return;
-	}
-	
-	
-	tf::Quaternion resto, q = elbow.getRotation();
-	geometry_msgs::Vector3 debug;
-	resto = q;
-	resto[1] = resto[2] = 0;
-	resto.normalize();
-	q = q* resto.inverse() ;
-	
-	debug.x = resto.getAngle();
-	
-	resto = q;
-	resto[1] = resto[0] = 0;
-	resto.normalize();
-	q = q* resto.inverse() ;
-	
-	debug.y = resto.getAngle();
-	
-	resto = q;
-	resto[2] = resto[0] = 0;
-	resto.normalize();
-	q = q* resto.inverse() ;
-	//printQuaternion(spalla1.inverse());
-	
-	debug.z = resto.getAngle();
-	debugPublisher.publish(debug);
-		std::cout << std::fixed <<debug.x<<debug.y<<debug.z<<std::endl;
+	for(int i=0; i<v.size(); i++)
+		v[i] = v[i] * 180.0 /boost::math::constants::pi<float>();
+}
 
-	tf::Matrix3x3(tf::Quaternion(q[1],q[0],q[2],q[3])).getRPY( debug.x,debug.y,debug.z,2);
-	std::cout << std::fixed <<debug.x<<debug.y<<debug.z<<std::endl;
-	tf::Matrix3x3(tf::Quaternion(q[1],q[2],q[0],q[3])).getRPY( debug.x,debug.y,debug.z,2);
-	std::cout << std::fixed <<debug.x<<debug.y<<debug.z<<std::endl;
-	tf::Matrix3x3(tf::Quaternion(q[0],q[2],q[1],q[3])).getRPY( debug.x,debug.y,debug.z,2);
-	std::cout << std::fixed <<debug.x<<debug.y<<debug.z<<std::endl;
-	tf::Matrix3x3(tf::Quaternion(q[2],q[1],q[0],q[3])).getRPY( debug.x,debug.y,debug.z,2);
-	std::cout << std::fixed <<debug.x<<debug.y<<debug.z<<std::endl;
-	tf::Matrix3x3(tf::Quaternion(q[2],q[0],q[1],q[3])).getRPY( debug.x,debug.y,debug.z,2);
-	std::cout << std::fixed <<debug.x<<debug.y<<debug.z<<std::endl;
-	return;
-	elbow.setRotation(q);
+UserposeRecognition::Result & UserposeRecognition::readResult()
+{
+	std::cerr << "migliore: "<<result.best
+	          <<"  distanza: "<<result.distance
+	          <<"  confidenza: "<<result.confidence
+	          <<std::endl;
+	return result;
+}
+
+void UserposeRecognition::analyzeData(unsigned int user,UserPoseData& datiUtente)
+{
+
+	result.best =findNearest(datiUtente,&result.distance);
+
+	float confidence = 0.0;
+	for(std::list<Result>::iterator it = lastResults.begin(); it!= lastResults.end(); it++)
+		if(it->best == result.best)
+			confidence +=1/ (it->distance);
+	confidence += 1/result.distance;
 	
-	transformBroadcaster.sendTransform(tf::StampedTransform(elbow, ros::Time::now(), "torso_1","sh"));
-	return;
+	confidence = std::min(confidence/10.0,1.0);
+	result.confidence = confidence;
+
+	lastResults.push_back(result);
+	if(lastResults.size()>10)
+		lastResults.pop_front();
 	
-	
-	/*if(fabs(q[0]) < 0.1)
-		q[0] = 0;
-	if(fabs(q[2]) < 0.1)
-		q[2] = 0;
-	q.normalize();*//*
-	double roll, pitch, yaw;
-	
-	
-	
-	tf::Matrix3x3(q).getRPY( roll,pitch,yaw,0);
-	if(fabs(roll) > 3.1)
-			;//tf::Matrix3x3(q).getRPY( roll,pitch,yaw,1);
-	
-	tf::Vector3 v = q.getAxis();
-	
-	printQuaternion(q);
-			std::cout <<roll<<" "<<pitch << " "<< yaw<<std::endl;
-	std::cout <<elbow.getOrigin().length()<<std::endl;*/
+//	userPoseDisplay.setCurrent(distanza,migliore);
+	/*std::cerr<<std::fixed<<"distanza: "<<currDistance<<std::endl;
+	std::cerr <<"il migliore: "<<currBest<<std::endl;*/
+
 
 }
 
+void UserposeRecognition::saveUserData(std::string,UserPoseData & datiUtente)
+{
+	trainingSet.push_back(datiUtente);
+}
+std::vector<UserPoseData> & UserposeRecognition::getTrainingSet()
+{
+	return trainingSet;
+}
 
-
-
+void UserposeRecognition::removeUserData(int index)
+{
+	if(index >= 0 && index < trainingSet.size())
+		trainingSet.erase(trainingSet.begin()+index);
+}
 UserposeRecognition::UserposeRecognition()
 {
-		debugPublisher = nh.advertise<geometry_msgs::Vector3>("debug",10);
 
-
-}
-
-
-int main(int argc, char** argv)
-{
-	ros::init(argc, argv, "basketbot_pose_recognition");
-	UserposeRecognition u;
-	ros::Rate r(12);
-	while (ros::ok()) {
-		
-		ros::spinOnce();
-		u.readFrames();
-		r.sleep();
-	}
 
 }

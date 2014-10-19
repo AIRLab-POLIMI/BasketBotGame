@@ -6,9 +6,11 @@ project(nite_tracker)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED sensor_msgs roscpp image_transport nodelet cv_bridge )
-find_package(OpenCV)
-
+find_package(catkin REQUIRED sensor_msgs roscpp image_transport nodelet cv_bridge tf message_generation)
+find_package(OpenCV REQUIRED)
+find_package(opentld_test REQUIRED)
+find_package(pcl_ros REQUIRED)
+find_package(PCL)
 find_path(OpenNI2_INCLUDEDIR
           NAMES OpenNI.h
           HINTS /usr/include/openni2)
@@ -63,11 +65,11 @@ find_library(Nite2_LIBRARY
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
+ add_message_files(
+   FILES
+   HumansData.msg
 #   Message2.msg
-# )
+ )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -84,10 +86,10 @@ find_library(Nite2_LIBRARY
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+ generate_messages(
+   DEPENDENCIES
+   std_msgs  # Or other packages containing msgs
+ )
 
 ###################################
 ## catkin specific configuration ##
@@ -108,17 +110,20 @@ catkin_package(
 ###########
 ## Build ##
 ###########
-
+MESSAGE( STATUS "AAAAAAAAAA::::::::::::::::::::         " ${opentld_test_INCLUDE_DIRS} )
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(${catkin_INCLUDEDIR}
                     ${OpenNI2_INCLUDEDIR}
                     ${Nite2_INCLUDEDIR}
+${opentld_test_INCLUDE_DIRS}
+			${PCL_INCLUDE_DIRS}
 			include)
 ## Declare a cpp library
  add_library(nite_tracker
    src/NiteTracker.cpp
+   src/face_detector.cpp
  )
 
 add_library(nite_tracker_nodelet
@@ -128,6 +133,10 @@ add_library(nite_tracker_nodelet
 
 ## Declare a cpp executable
  add_executable(nite_tracker_node src/main.cpp)
+add_executable(face_recognition_standalone src/face_recognition_standalone.cpp)
+add_executable(face_detector_cam src/face_detector_cam.cpp src/face_detector.cpp    src/opentld_face_detector.cpp
+)
+
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -136,11 +145,12 @@ add_library(nite_tracker_nodelet
 ## Specify libraries to link a library or executable target against
 target_link_libraries(nite_tracker_node nite_tracker ${catkin_LIBRARIES})
 target_link_libraries(nite_tracker_nodelet nite_tracker ${catkin_LIBRARIES})
-
+target_link_libraries(face_recognition_standalone nite_tracker ${catkin_LIBRARIES})
  target_link_libraries(nite_tracker
    ${OpenNI2_LIBRARIES} ${Nite2_LIBRARY} ${OpenCV_LIBRARIES}
  )
 
+target_link_libraries(face_detector_cam ${OpenCV_LIBRARIES} libopentld cvblobs ${catkin_LIBRARIES})
 #############
 ## Install ##
 #############

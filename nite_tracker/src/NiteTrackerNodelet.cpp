@@ -1,17 +1,13 @@
 #include "NiteTracker.h"
 #include <nodelet/nodelet.h>
 
-
-
 namespace nite_tracker
 {
 	class NiteTrackerNodelet : public nodelet::Nodelet
 	{
 	public:
-	
-	
 		void onInit() {
-			lp.reset(new NiteTracker());
+			lp.reset(new NiteTracker(getNodeHandle()));
 		};
 	
 		boost::shared_ptr<NiteTracker> lp;

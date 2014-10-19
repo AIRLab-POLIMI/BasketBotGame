@@ -81,7 +81,7 @@ void PlayerTracker::spin()
 
 PlayerTracker::PlayerTracker()
 {
-	playerSubscriber2 = node.subscribe("COMPoints", 2, &PlayerTracker::playerPosCallback2,this);
+	playerSubscriber2 = node.subscribe("/tracker/COMPoints", 2, &PlayerTracker::playerPosCallback2,this);
 	faceSubscriber = node.subscribe("/face_detector/faces_cloud", 2, &PlayerTracker::facePosCallback,this);
 	odometrySubscriber = node.subscribe("/odom", 2, &PlayerTracker::odometryCallback,this);
 	predictionPublisher = node.advertise<player_tracker::PosPrediction>("PosPrediction",10);
@@ -141,9 +141,9 @@ float PlayerTracker::calculateScore(unsigned int playerID)
 	float speed = calculateSpeed(playerID);
 	float faceDistance = calculateFaceDistance(playerID);
 
-	float speedScore = 0.75 * applySlope(speed,0.2,0.4);
-	float faceScore = 0.75 * applySlope(faceDistance,0.4,0.2);
-
+	float speedScore = 1.75 * applySlope(speed,0.2,0.4);
+	float faceScore = 1.0* applySlope(faceDistance,0.4,0.2);
+	return 2.0;
 	ROS_INFO("giocatore %d, vel %f (%f),faccia %f(%f)",playerID,speed,speedScore,faceDistance,faceScore);
 	return speedScore + faceScore;
 
@@ -155,7 +155,7 @@ int PlayerTracker::getBestPlayer()
 	float bestScore=0;
 	for(unsigned int i = 0; i < potentialPlayers.size(); i++) {
 		PlayerInfo &it = potentialPlayers[i];
-		if(it.score > bestScore) {
+		if(it.score > bestScore && it.valid) {
 			ret = i;
 			bestScore = it.score;
 		}
@@ -182,7 +182,6 @@ void PlayerTracker::playerPosCallback2(const pcl::PointCloud<pcl::PointXYZL>::Co
 	lastUpdate = ros::Time::now();
 
 	oddIteration = !oddIteration;
-
 	for(pcl::PointCloud<pcl::PointXYZL>::const_iterator it= msg->points.begin(); it!= msg->points.end(); ++it) {
 		int id = it->label;
 		ROS_INFO("poscall: %d   %f %f %f",id,it->x,it->y,it->z);
@@ -197,7 +196,7 @@ void PlayerTracker::playerPosCallback2(const pcl::PointCloud<pcl::PointXYZL>::Co
 		potentialPlayers[id].playerFilter.updateOdometry(robotLinearSpeed, robotAngularSpeed);
 
 		float distanza = sqrt(it->x * it->x +it->z*it->z);
-		float angolo = atan2(-it->x,it->z);
+		float angolo = atan2(it->x,it->z);
 		if(distanza > 0.1)
 			potentialPlayers[id].playerFilter.updatePlayerPos(distanza,angolo);
 
@@ -207,15 +206,20 @@ void PlayerTracker::playerPosCallback2(const pcl::PointCloud<pcl::PointXYZL>::Co
 
 		potentialPlayers[id].oddIteration = oddIteration;
 	}
+	int debugCount = 0;
 	for(unsigned int i = 0; i < potentialPlayers.size(); i++) {
 		PlayerInfo &it = potentialPlayers[i];
 		if(it.oddIteration != oddIteration && it.valid) {
 			it.valid = false;
 			if(i == currentPlayer)
+			{
 				currentPlayer = -1;
+				debugCount++;
+			}
 			std::cout << "lost a player"<<std::endl;
 		}
 	}
+		ROS_INFO("poscall,%d present,currentPlayer %d",debugCount,currentPlayer);
 
 	int bestPlayer = getBestPlayer();
 	if(bestPlayer>=0 && potentialPlayers[bestPlayer].score > threshold  ) {

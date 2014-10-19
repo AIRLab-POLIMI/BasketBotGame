@@ -43,9 +43,7 @@ RosBrianBridge::RosBrianBridge():brain(this,brian_config_path)
 void RosBrianBridge::desiredCmdVelJoyCallback(const r2p::Velocity::ConstPtr& msg)
 {
 	float r = msg->w / 10.0;
-
 	float v = msg->x;
-
 	suggestedLinearSpeed=v;
 	suggestedAngularSpeed=r;
 
@@ -57,7 +55,7 @@ void RosBrianBridge::desiredCmdVelKeyCallback(const geometry_msgs::Twist::ConstP
 
 	suggestedLinearSpeed = v;
 	suggestedAngularSpeed=r;
-
+	last_joy_suggestion = ros::Time::now();
 }
 
 
@@ -110,10 +108,14 @@ float RosBrianBridge::getPlayerPositionUnreliability()
 
 float RosBrianBridge::getSuggestedLinearSpeed()
 {
+	if(ros::Time::now() - last_joy_suggestion > ros::Duration(0.5))
+		return 0;
 	return suggestedLinearSpeed;
 }
 float RosBrianBridge::getSuggestedAngularSpeed()
 {
+	if(ros::Time::now() - last_joy_suggestion > ros::Duration(0.5))
+		return 0;
 	return suggestedAngularSpeed;
 }
 int main(int argc, char** argv)
