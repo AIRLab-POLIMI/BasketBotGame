@@ -190,8 +190,8 @@ void FaceDetector::filterFacesByDepthInternal(cv::Mat depth,std::vector<cv::Rect
 
 void FaceDetector::filterFacesByDepth(cv::Mat depth)
 {
-	filterFacesByDepthInternal(depth,faces_profile,750,1000);
-	filterFacesByDepthInternal(depth,faces_front,800,1050);
+	filterFacesByDepthInternal(depth,faces_profile,750,1150);
+	filterFacesByDepthInternal(depth,faces_front,650,1050);
 }
 
 std::vector<int> FaceDetector::extractHumans(cv::Mat users)

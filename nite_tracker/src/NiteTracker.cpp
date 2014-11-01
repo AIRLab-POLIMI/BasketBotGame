@@ -12,6 +12,7 @@ UserData g_users[16];
 
 NiteTracker::NiteTracker(ros::NodeHandle &nh):nh(nh), it(nh)
 {
+	connected = false;
 	std::cerr<<getppid()<<std::endl;
 	nite::NiTE::initialize();
 
@@ -19,16 +20,35 @@ NiteTracker::NiteTracker(ros::NodeHandle &nh):nh(nh), it(nh)
 	image_sub = it.subscribe("/camera/rgb/image_raw",2,&NiteTracker::imageCallback,this);
 	depth_sub = it.subscribe("/camera/depth_registered/image_raw",2,&NiteTracker::depthCallback,this);
 	initDevice(NULL);
-	image_pub = it.advertise("nite", 1);
+	image_transport::SubscriberStatusCallback itssc = boost::bind(&NiteTracker::connectCb, this);
+
+	image_pub = it.advertise("nite", 1,itssc,itssc);
 	face_pub = it.advertise("faces", 1);
 	user_pub = it.advertise("users", 1);
+
 	humansSubscriber = nh.subscribe("humans", 1,&NiteTracker::humansCallback,this );
 	std::cerr <<"inizialato"<<std::endl;
-	PointsPublisher = nh.advertise<pcl::PointCloud<pcl::PointXYZL> >("COMPoints",10);
+	ros::SubscriberStatusCallback rssc = boost::bind(&NiteTracker::connectCb, this);
+
+	PointsPublisher = nh.advertise<pcl::PointCloud<pcl::PointXYZL> >("COMPoints",10,rssc,rssc);
 	SkeletonPointsPublisher = nh.advertise<pcl::PointCloud<pcl::PointXYZL> >("SkeletonPoints",10);
-	userTracker.addNewFrameListener(this);
+
 
 }
+void NiteTracker::connectCb()
+{
+	int ascoltatori = PointsPublisher.getNumSubscribers()+image_pub.getNumSubscribers();
+	if(!connected && ascoltatori > 0) {
+		userTracker.addNewFrameListener(this);
+		connected=true;
+	}
+	if(connected && ascoltatori == 0) {
+		userTracker.removeNewFrameListener(this);
+		connected=false;
+
+	}
+}
+
 void NiteTracker::humansCallback(nite_tracker::HumansData::ConstPtr humans)
 {
 	for(int i = 0; i<humans->humans.size(); i++) {
@@ -80,6 +100,12 @@ bool NiteTracker::initDevice(openni::Device *device)
 
 NiteTracker::~NiteTracker()
 {
+	userTracker.removeNewFrameListener(this);
+	std::cerr<<"rimosso listener"<<std::endl;
+
+	userTracker.destroy();
+	std::cerr<<"distrutto"<<std::endl;
+	std::cerr<<"spegnimento"<<std::endl;
 	nite::NiTE::shutdown();
 }
 
@@ -203,34 +229,9 @@ void NiteTracker::publishSkeletonPoints(nite::UserId id,const nite::Skeleton & s
 	SkeletonPointsPublisher.publish(pmsg);
 
 }
-void NiteTracker::faceDetectionThread(cv::Mat image,cv::Mat userMap,cv::Mat depthMap)
-{
 
-	ros::Time startTime = ros::Time::now();
-	faceDetector.analyze(image,depthMap);
-	std::vector<int> faces = faceDetector.extractHumans(userMap);
-	boost::lock_guard<boost::mutex> lock(m_mutex);
-	for(int i = 0; i < faces.size(); ++i)
-		if(g_users[faces[i]].firstSeen <= startTime)
-			g_users[faces[i]].human = true;
-	last_image.image = image;
-	face_pub.publish(last_image.toImageMsg());
-	face_mutex.unlock();
-}
 
-void NiteTracker::tryFaceDetection(cv::Mat image,cv::Mat userMap,cv::Mat depthMap)
-{
-	return;
-	if(!face_mutex.try_lock())
-		return;
-	if(face_thread.joinable())
-		face_thread.join();
 
-	cv::Mat im = image.clone();
-	cv::Mat us = userMap.clone();
-	cv::Mat de = depthMap.clone();
-	face_thread = boost::thread(&NiteTracker::faceDetectionThread,this,im,us,de);
-}
 
 tf::Vector3 NiteTracker::nitePointToRealWorld(nite::Point3f p)
 {
@@ -253,7 +254,7 @@ void NiteTracker::publishCOMs(const nite::Array<nite::UserData>& users)
 		const nite::UserData& user = users[i];
 		if(!g_users[user.getId()].human)
 			break;
-			contatore++;
+		contatore++;
 		pcl::PointXYZL point;
 		point.label = users[i].getId();
 		if(!users[i].isVisible()) {
@@ -303,8 +304,6 @@ void NiteTracker::analyzeFrame(const sensor_msgs::ImageConstPtr& rgb_msg,nite::U
 	const nite::Array<nite::UserData>& users = userTrackerFrame.getUsers();
 
 	updateUsers(users);
-
-	tryFaceDetection( image,userMap,depthMap);
 
 	publishCOMs(users);
 	int contatore =0;

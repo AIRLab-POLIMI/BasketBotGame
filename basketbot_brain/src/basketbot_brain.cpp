@@ -29,15 +29,24 @@ void BasketBotBrain::checkUnreliability()
 		currentState=NORMAL;
 	}
 	
-	
 }
 void BasketBotBrain::rotateAndSearch(float direction)
 {
 	setState((direction<0)?SEARCH_RIGHT:SEARCH_LEFT,5.0);
-	
 
 }
-
+void BasketBotBrain::generateObstaclesData()
+{
+	std::vector<float> obstacles = messenger->getObstacles();
+	input["ObstacleFront"] = obstacles[0];
+	input["ObstacleFrontLeft"] = obstacles[1];
+	input["ObstacleLeft"] = obstacles[2];
+	input["ObstacleRearLeft"] = obstacles[3];
+	input["ObstacleRear"] = obstacles[4];
+	input["ObstacleRearRight"] = obstacles[5];
+	input["ObstacleRight"] = obstacles[6];
+	input["ObstacleFrontRight"] = obstacles[7];
+}
 void BasketBotBrain::runBrian()
 {
 	if(currentState != NORMAL) {
@@ -46,11 +55,15 @@ void BasketBotBrain::runBrian()
 			currentState = NORMAL;
 	}
 	
+	generateObstaclesData();
 	
 	std::cout << "unr: "<<messenger->getPlayerPositionUnreliability()<<std::endl;
 
 	//create brian variables
 
+	RosBrianBridge::BiFloat robotSpeeds = messenger->getRobotSpeed();
+	input["RobotLinearSpeed"] = robotSpeeds.first;
+	input["RobotAngularSpeed"] = robotSpeeds.second;
 	input["PlayerDistance" ] = (messenger->getPlayerDistance() - distanceOffset) * distanceSensitivity;
 	input["PlayerOrientation"] = messenger->getPlayerOrientation();
 	input["PlayerVelocityX"] = messenger->getPlayerVelocityX()*playerSpeedSensitivity;
@@ -60,14 +73,11 @@ void BasketBotBrain::runBrian()
 	input["SuggestedLinearSpeed" ] = messenger->getSuggestedLinearSpeed();
 	input["SuggestedAngularSpeed"] = messenger->getSuggestedAngularSpeed();
 
-
-
 	checkUnreliability();
 
 	input["RobotStatus"] = currentState;
 
-
-
+	input["StateElapsed"] = (ros::Time::now()-latestStateChange).toSec();
 	output = brian.execute(input);
 
 	float speed = 0,rotation=0;
@@ -77,14 +87,15 @@ void BasketBotBrain::runBrian()
 	rotation=applyShape(rotation,outputSnappiness);
 	messenger->setSpeed(speed,rotation);
 
-	input["RobotLinearSpeed"] = speed;
-	input["RobotAngularSpeed"] = rotation;
-	currentState = BasketBotBrain::State ( (float) output["RobotStatus"]);
+
+	setState(BasketBotBrain::State ( (int) round(output["RobotStatus"])));
+	
+	
 
 }
 
 
-BasketBotBrain::BasketBotBrain(RosBrianBridge *messenger,std::string config_path): messenger(messenger),brian(config_path,1)
+BasketBotBrain::BasketBotBrain(RosBrianBridge *messenger,std::string config_path): messenger(messenger),brian(config_path,1),currentState(NONE)
 {
 	distanceOffset = 2;
 	distanceSensitivity = 0.5 ;
@@ -92,6 +103,8 @@ BasketBotBrain::BasketBotBrain(RosBrianBridge *messenger,std::string config_path
 	reverseRotationThreshold = 0.5;
 	outputSnappiness = 0;
 	playerNotVisibleThreshold = 1.8;
+	
+	setState(NORMAL);
 }
 
 float BasketBotBrain::applyShape(float input,float shape)
@@ -113,9 +126,14 @@ void BasketBotBrain::freeze(float seconds)
 
 void BasketBotBrain::setState(State s, float seconds)
 {
+	if(s == NONE)
+		return;
+	if(currentState != s)
+		latestStateChange = ros::Time::now();
 	currentState = s;
 	stateDuration = seconds;
-
+	
+	
 	
 }
 void BasketBotBrain::spinOnce()

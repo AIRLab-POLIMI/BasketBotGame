@@ -184,7 +184,7 @@ void PlayerTracker::playerPosCallback2(const pcl::PointCloud<pcl::PointXYZL>::Co
 	oddIteration = !oddIteration;
 	for(pcl::PointCloud<pcl::PointXYZL>::const_iterator it= msg->points.begin(); it!= msg->points.end(); ++it) {
 		int id = it->label;
-		ROS_INFO("poscall: %d   %f %f %f",id,it->x,it->y,it->z);
+		//ROS_INFO("poscall: %d   %f %f %f",id,it->x,it->y,it->z);
 		if(!potentialPlayers[id].valid) {
 			std::cout <<"added a new player"<<std::endl;
 			playerEKF e;
@@ -211,15 +211,14 @@ void PlayerTracker::playerPosCallback2(const pcl::PointCloud<pcl::PointXYZL>::Co
 		PlayerInfo &it = potentialPlayers[i];
 		if(it.oddIteration != oddIteration && it.valid) {
 			it.valid = false;
-			if(i == currentPlayer)
-			{
+			if(i == currentPlayer) {
 				currentPlayer = -1;
 				debugCount++;
 			}
 			std::cout << "lost a player"<<std::endl;
 		}
 	}
-		ROS_INFO("poscall,%d present,currentPlayer %d",debugCount,currentPlayer);
+	//ROS_INFO("poscall,%d present,currentPlayer %d",debugCount,currentPlayer);
 
 	int bestPlayer = getBestPlayer();
 	if(bestPlayer>=0 && potentialPlayers[bestPlayer].score > threshold  ) {
@@ -230,42 +229,41 @@ void PlayerTracker::playerPosCallback2(const pcl::PointCloud<pcl::PointXYZL>::Co
 	}
 
 
-	
-		publishPlayerInfo(currentPlayer);
+
+	publishPlayerInfo(currentPlayer);
 }
 
 
 
 void PlayerTracker::publishPlayerInfo(int player)
 {
-	
+
 	player_tracker::PosPrediction pred;
 
 
-	if(player > -1)
-	{
+	if(player > -1) {
 		PlayerInfo  &it = potentialPlayers[currentPlayer];
-	std::vector<float> res = it.playerFilter.getStatus();
-	tf::Transform tr;
-	tr.setRotation( tf::Quaternion(0,0 , 0, 1) );
-	tr.setOrigin(tf::Vector3(res[0],res[1],0.0));
-	transformBroadcaster.sendTransform(tf::StampedTransform(tr, ros::Time::now(), "base_link_respondable", "bill_filtered"));
-	tr.setOrigin(tf::Vector3(res[2]*2.0,res[3]*2.0,0.0));
-	transformBroadcaster.sendTransform(tf::StampedTransform(tr, ros::Time::now(), "bill_filtered", "bill_filtered_vel"));
-	pred.position.x = res[0];
-	pred.position.y = res[1];
-	pred.velocity.x = res[2];
-	pred.velocity.y = res[3];
-	pred.unreliability = sqrt(res[4] + res[5]);
-	}
-	else
-	{
+		std::vector<float> res = it.playerFilter.getStatus();
+		tf::Transform tr;
+		tr.setRotation( tf::Quaternion(0,0 , 0, 1) );
+		tr.setOrigin(tf::Vector3(res[0],res[1],0.0));
+		transformBroadcaster.sendTransform(tf::StampedTransform(tr, ros::Time::now(), "base_link_respondable", "bill_filtered"));
+		tr.setOrigin(tf::Vector3(res[2]*2.0,res[3]*2.0,0.0));
+		transformBroadcaster.sendTransform(tf::StampedTransform(tr, ros::Time::now(), "bill_filtered", "bill_filtered_vel"));
+		pred.userId = player;
+		pred.position.x = res[0];
+		pred.position.y = res[1];
+		pred.velocity.x = res[2];
+		pred.velocity.y = res[3];
+		pred.unreliability = sqrt(res[4] + res[5]);
+	} else {
+		pred.userId = -1;
 		pred.position.x = 0;
-	pred.position.y = 0;
-	pred.velocity.x = 0;
-	pred.velocity.y = 0;
-	pred.unreliability = std::numeric_limits<double>::max();
-		
+		pred.position.y = 0;
+		pred.velocity.x = 0;
+		pred.velocity.y = 0;
+		pred.unreliability = std::numeric_limits<double>::max();
+
 	}
 	//std::cout <<"unrel: "<<pred.unreliability<<" "<<res[4]<<" "<<res[5]<<std::endl;
 	predictionPublisher.publish(pred);

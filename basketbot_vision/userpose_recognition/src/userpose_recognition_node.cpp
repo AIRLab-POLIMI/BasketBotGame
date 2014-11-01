@@ -1,126 +1,188 @@
-#include <iostream>
-#include <sstream>
-#include <boost/math/constants/constants.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/thread/thread.hpp>
-
+#include <userpose_recognition.h>
+#include <ros/ros.h>
+#include <tf/transform_listener.h>
+#include <tf/transform_broadcaster.h>
 #include "UserPoseDisplay.h"
-#include "userpose_data.h"
-#include <fstream>
-#include "userpose_recognition.h"
+#include <userpose_recognition/UserPose.h>
+#include <player_tracker/PosPrediction.h>
+#include <ros/package.h>
 
-namespace std
+const unsigned int MAX_USERS=16;
+const std::string userpose_config_path = ros::package::getPath("userpose_recognition") + "/config";
+class UserposeRecognitionNode
 {
-string operator<<(string s,int n)
+	UserposeRecognition userposeRecognition;
+	ros::Publisher userPosePublisher;
+	ros::Subscriber posPredictionSubscriber;
+	ros::NodeHandle nh;
+	ros::NodeHandle pnh;
+	tf::TransformListener transformListener;
+	bool isTransformAvailable(std::string a ,std::string b);
+	void analyzeUser(int i);
+	bool isUserAvailable(unsigned int id);
+	std::vector<tf::StampedTransform> readUserTransforms(unsigned int id);
+	UserPoseDisplay userPoseDisplay;
+	static void keyCallback(void * ptr,int,int);
+	bool save;
+	int currentPlayer;
+	void posPredictionCallback(const player_tracker::PosPrediction::ConstPtr& msg);
+public:
+	UserposeRecognitionNode();
+	~UserposeRecognitionNode();
+	void readFrames();
+
+};
+
+void UserposeRecognitionNode::keyCallback(void *ptr,int button, int index)
 {
-	stringstream ss;
-	ss<<s<<n;
-	return ss.str();
-}
-}
+	UserposeRecognitionNode* that = (UserposeRecognitionNode*) ptr;
+	std::cerr<<"keycallback"<<std::endl;
 
-bool UserposeRecognition::loadData(std::string file)
-{
-	try {
-
-		YAML::Node config = YAML::LoadFile(file);
-		trainingSet = config.as<std::vector<UserPoseData> >();
-
-	} catch(...) {
-		return false;
+	if(button==2 ) {
+		that->userposeRecognition.removeUserData(index);
+		that->userPoseDisplay.loadData(that->userposeRecognition.getTrainingSet());
 	}
-	return true;
+	if(button==3) {
+		std::cerr<<"userkeycallback"<<std::endl;
+		that->save=true;
+
+	}
+
 }
-bool UserposeRecognition::saveData(std::string file)
+
+bool UserposeRecognitionNode::isUserAvailable(unsigned int id)
 {
-	YAML::Node node;
-	node = trainingSet;
-	std::ofstream fout(file.c_str());
-	fout << node;
+	std::string intr[] = {"neck_","torso_","right_shoulder_","left_shoulder_","right_elbow_","left_elbow_"};
+	int sizeIntr = sizeof(intr)/sizeof(intr[0]);
+
+
+	if(!isTransformAvailable(std::string("neck_")<<id,std::string("torso_")<<id))
+		return false;
+	if(!isTransformAvailable(std::string("right_shoulder_")<<id,std::string("left_shoulder_")<<id))
+		return false;
+	if(!isTransformAvailable(std::string("right_elbow_")<<id,std::string("left_elbow_")<<id))
+		return false;
+
+	if(!isTransformAvailable(std::string("right_elbow_")<<id,std::string("left_shoulder_")<<id))
+		return false;
+	if(!isTransformAvailable(std::string("neck_")<<id,std::string("left_shoulder_")<<id))
+		return false;
+
 	return true;
 }
 
 
-int UserposeRecognition::findNearest(UserPoseData & data,float *retDist)
+UserposeRecognitionNode::UserposeRecognitionNode():nh(),pnh("~")
 {
-	if(trainingSet.size() == 0)
-		return -1;
-	int ret = 0;
-	float dist = data-trainingSet[0];
-	for(int i = 1; i<trainingSet.size(); i++) {
-		float d = data-trainingSet[i];
-		if(d<dist) {
-			dist = d;
-			ret = i;
+	save = false;
+	userPoseDisplay.setMouseCallback(keyCallback,this);
+	userposeRecognition.loadData(userpose_config_path + "/config.yaml");
+	userPoseDisplay.loadData(userposeRecognition.getTrainingSet());
+	userPosePublisher = nh.advertise<userpose_recognition::UserPose>("UserPose",10);
+	currentPlayer=0;
+	posPredictionSubscriber = nh.subscribe("PosPrediction", 2, &UserposeRecognitionNode::posPredictionCallback,this);
+	userPoseDisplay.init();
+
+}
+UserposeRecognitionNode::~UserposeRecognitionNode()
+{
+	userposeRecognition.saveData(userpose_config_path + "/config.yaml");
+}
+
+void UserposeRecognitionNode::readFrames()
+{
+	bool found = false;
+	if(currentPlayer>0) {
+		if(isUserAvailable(currentPlayer)) {
+			analyzeUser(currentPlayer);
+			found = true;
 		}
 	}
-	if(retDist)
-		*retDist = dist;
-	return ret;
+	if(currentPlayer==0)
+		for(int i = 1; i<MAX_USERS; i++)
+			if(isUserAvailable(i)) {
+				std::cerr <<"utente disponibile: "<<i<<std::endl;
+				analyzeUser(i);
+				found = true;
+			}
+	userPoseDisplay.spinOnce();
 
+	return;
 }
 
-void printQuaternion(tf::Quaternion& q)
+void UserposeRecognitionNode::analyzeUser(int user)
 {
-	std::cout << q[0]<<"\t"<<q[1]<<"\t"<<q[2]<<"\t"<<q[3]<<std::endl;
+	std::vector<tf::StampedTransform> transforms = readUserTransforms(user);
+	UserPoseData datiUtente(transforms);
+	userposeRecognition.analyzeData(user,datiUtente);
+	int index;
+	float distance;
+	UserposeRecognition::Result result= userposeRecognition.readResult();
+	index = result.best;
+	distance = result.distance;
+	if(result.confidence<0.5)
+		index = -1;
+	userPoseDisplay.setCurrent(distance,index);
+	userPoseDisplay.showTransforms(datiUtente);
+
+	userpose_recognition::UserPose userPose;
+	userPose.poseName = index>-1?userposeRecognition.getPoseName(index):"none";
+	userPose.userId = user;
+	userPose.poseId = index;
+	userPose.confidence = result.confidence;
+	userPose.distance = distance;
+	userPosePublisher.publish(userPose);
+
+	if(save) {
+		save=false;
+		userposeRecognition.saveUserData("nome",datiUtente);
+		userPoseDisplay.loadData(userposeRecognition.getTrainingSet());
+	}
 }
-
-void UserposeRecognition::radiansToDegrees(std::vector<float> & v)
+bool UserposeRecognitionNode::isTransformAvailable(std::string a ,std::string b)
 {
-	for(int i=0; i<v.size(); i++)
-		v[i] = v[i] * 180.0 /boost::math::constants::pi<float>();
+	tf::StampedTransform tr;
+
+	try {
+		transformListener.lookupTransform ( a,b,ros::Time(0),tr);
+		if(ros::Time::now() - tr.stamp_  < ros::Duration(0.5))
+			return true;
+
+	} catch(...) {
+		;
+	}
+	return false;
 }
-
-UserposeRecognition::Result & UserposeRecognition::readResult()
+void UserposeRecognitionNode::posPredictionCallback(const player_tracker::PosPrediction::ConstPtr& msg)
 {
-	std::cerr << "migliore: "<<result.best
-	          <<"  distanza: "<<result.distance
-	          <<"  confidenza: "<<result.confidence
-	          <<std::endl;
-	return result;
+	currentPlayer=msg->userId;
 }
-
-void UserposeRecognition::analyzeData(unsigned int user,UserPoseData& datiUtente)
+std::vector<tf::StampedTransform> UserposeRecognitionNode::readUserTransforms(unsigned int id)
 {
+	std::vector<tf::StampedTransform> transforms;
+	tf::StampedTransform tmp;
 
-	result.best =findNearest(datiUtente,&result.distance);
+	std::string baseFrame = UserPoseData::interestingTransforms[0]<<id;
 
-	float confidence = 0.0;
-	for(std::list<Result>::iterator it = lastResults.begin(); it!= lastResults.end(); it++)
-		if(it->best == result.best)
-			confidence +=1/ (it->distance);
-	confidence += 1/result.distance;
-	
-	confidence = std::min(confidence/10.0,1.0);
-	result.confidence = confidence;
-
-	lastResults.push_back(result);
-	if(lastResults.size()>10)
-		lastResults.pop_front();
-	
-//	userPoseDisplay.setCurrent(distanza,migliore);
-	/*std::cerr<<std::fixed<<"distanza: "<<currDistance<<std::endl;
-	std::cerr <<"il migliore: "<<currBest<<std::endl;*/
+	for(int i = 1; i<UserPoseData::interestingTransformsSize; i++) {
+		transformListener.lookupTransform ( baseFrame,UserPoseData::interestingTransforms[i]<<id,ros::Time(0),tmp);
+		transforms.push_back(tmp);
+	}
 
 
+	return transforms;
 }
+int main(int argc, char** argv)
+{
+	ros::init(argc, argv, "basketbot_pose_recognition");
+	UserposeRecognitionNode u;
+	ros::Rate r(20);
+	while (ros::ok()) {
 
-void UserposeRecognition::saveUserData(std::string,UserPoseData & datiUtente)
-{
-	trainingSet.push_back(datiUtente);
-}
-std::vector<UserPoseData> & UserposeRecognition::getTrainingSet()
-{
-	return trainingSet;
-}
-
-void UserposeRecognition::removeUserData(int index)
-{
-	if(index >= 0 && index < trainingSet.size())
-		trainingSet.erase(trainingSet.begin()+index);
-}
-UserposeRecognition::UserposeRecognition()
-{
-
+		ros::spinOnce();
+		u.readFrames();
+		r.sleep();
+	}
+	std::cerr<<"chiusura"<<std::endl;
 
 }

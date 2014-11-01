@@ -1,0 +1,12 @@
+(AND (DangerAhead)(ProposedForward)) => (&DEL.SpeedModule ANY);
+(AND (DangerBehind)(ProposedBackward)) => (&DEL.SpeedModule ANY);
+
+
+(AND (AND (ObstacleFront) (ObstacleFrontLeft)) (ObstacleFrontRight)) => (SpeedModule BACKWARD);
+(AND (AND (ObstacleRear) (ObstacleRearLeft)) (ObstacleRearRight)) => (SpeedModule FORWARD);
+
+(AND (ObstacleFrontRight) (ProposedForward)) => (RotSpeed LEFT); 
+(AND (ObstacleFrontLeft) (ProposedForward)) => (RotSpeed RIGHT); 
+
+(AND (ObstacleRearRight) (ProposedBackward)) =>(RotSpeed RIGHT); 
+(AND (ObstacleRearLeft) (ProposedBackward)) =>  (RotSpeed LEFT); 

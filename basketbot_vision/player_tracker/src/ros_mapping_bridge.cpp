@@ -65,7 +65,7 @@ PlayerPredictor::PlayerPredictor() : node(ros::NodeHandle()), transformListener(
 
 void PlayerPredictor::spin()
 {
-	ros::Rate rate(20.0);
+	ros::Rate rate(30.0);
 	while (node.ok()) {
 		playerFilter.updateOdometry(last_odometry_v,last_odometry_alpha);
 

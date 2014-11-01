@@ -2,10 +2,11 @@
 
 #include <ros/package.h>
 #include "RosBrianBridge.h"
+#include <boost/math/constants/constants.hpp>
+
 std::string brian_config_path = ros::package::getPath("basketbot_brain") + "/config";
 
 float RosBrianBridge::maxSpeeds = 0.25;
-
 void RosBrianBridge::setSpeed(float v, float rot)
 {
 	geometry_msgs::Twist vel_msg;
@@ -18,7 +19,7 @@ void RosBrianBridge::setSpeed(float v, float rot)
 	float maxV = maxSpeeds,maxR = maxSpeeds;
 	v=std::min(std::max(v,-maxV),maxV);
 	rot=std::min(std::max(rot,-maxR),maxR);
-	
+
 
 	r2p::Velocity ve;
 	ve.x = v;
@@ -26,17 +27,33 @@ void RosBrianBridge::setSpeed(float v, float rot)
 	commandsPublisherTiltone.publish(ve);
 }
 
+void RosBrianBridge::userPoseCallback(const userpose_recognition::UserPoseConstPtr & msg)
+{
+	std::cerr << "rilevata posa: "<<msg->poseName<<std::endl;
+	if(msg->poseName=="surrender")
+		brain.freeze(5.0);
+	
+}
+
+void RosBrianBridge::odomCallback(const nav_msgs::Odometry::ConstPtr & msg)
+{
+	last_odometry_v = msg->twist.twist.linear.x;
+	last_odometry_alpha= msg->twist.twist.angular.z;
+	
+}
+
 RosBrianBridge::RosBrianBridge():brain(this,brian_config_path)
 {
 	predictionSubscriber = node.subscribe("PosPrediction", 2, &RosBrianBridge::predictionCallback,this);
 	commandsPublisher = node.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
 	commandsPublisherTiltone = node.advertise<r2p::Velocity>("/tiltone/velocity", 10);
-
-	suggestedCmdVelKey = node.subscribe("suggested_cmd_vel", 2,&RosBrianBridge::desiredCmdVelKeyCallback,this);
+	userPoseSubscriber = node.subscribe("UserPose", 2, &RosBrianBridge::userPoseCallback,this);
+	suggestedCmdVelKey = node.subscribe("/suggested_cmd_vel", 2,&RosBrianBridge::desiredCmdVelKeyCallback,this);
 	suggestedCmdVelJoy = node.subscribe("/tiltone/velocityD", 2,&RosBrianBridge::desiredCmdVelJoyCallback,this);
-
+	odomSubscriber = node.subscribe("/odom", 2,&RosBrianBridge::odomCallback,this);
 
 	suggestedLinearSpeed = suggestedAngularSpeed = 0;
+	last_odometry_v = last_odometry_alpha = 0;
 
 }
 
@@ -44,8 +61,12 @@ void RosBrianBridge::desiredCmdVelJoyCallback(const r2p::Velocity::ConstPtr& msg
 {
 	float r = msg->w / 10.0;
 	float v = msg->x;
+	if(r!=suggestedAngularSpeed && v != suggestedLinearSpeed)
+		last_joy_suggestion = ros::Time::now();
 	suggestedLinearSpeed=v;
 	suggestedAngularSpeed=r;
+
+
 
 }
 void RosBrianBridge::desiredCmdVelKeyCallback(const geometry_msgs::Twist::ConstPtr& msg)
@@ -55,7 +76,6 @@ void RosBrianBridge::desiredCmdVelKeyCallback(const geometry_msgs::Twist::ConstP
 
 	suggestedLinearSpeed = v;
 	suggestedAngularSpeed=r;
-	last_joy_suggestion = ros::Time::now();
 }
 
 
@@ -81,8 +101,21 @@ void RosBrianBridge::spin()
 	while(ros::ok()) {
 		ros::spinOnce();
 		brain.spinOnce();
+		obstaclesListener.debugStep();
 		r.sleep();
 	}
+}
+
+std::vector<float> RosBrianBridge::getObstacles()
+{
+	const double angleStep =  boost::math::constants::pi<double>()/4.0;
+	std::vector<float> result;
+	for(int i = 0; i<8; i++) {
+		double currentAngle = angleStep*i;
+		float cost = obstaclesListener.rayTrace(currentAngle,1.0);
+		result.push_back(cost);
+	}
+	return result;
 }
 
 float RosBrianBridge::getPlayerDistance()
@@ -101,6 +134,15 @@ float RosBrianBridge::getPlayerVelocityX()
 {
 	return predictedVX;
 }
+
+RosBrianBridge::BiFloat RosBrianBridge::getRobotSpeed()
+{
+	BiFloat result;
+	result.first = last_odometry_v;
+	result.second = last_odometry_alpha;
+	return result;
+	
+}
 float RosBrianBridge::getPlayerPositionUnreliability()
 {
 	return currentUnreliability;
@@ -108,13 +150,13 @@ float RosBrianBridge::getPlayerPositionUnreliability()
 
 float RosBrianBridge::getSuggestedLinearSpeed()
 {
-	if(ros::Time::now() - last_joy_suggestion > ros::Duration(0.5))
+	if(ros::Time::now() - last_joy_suggestion > ros::Duration(1.0))
 		return 0;
 	return suggestedLinearSpeed;
 }
 float RosBrianBridge::getSuggestedAngularSpeed()
 {
-	if(ros::Time::now() - last_joy_suggestion > ros::Duration(0.5))
+	if(ros::Time::now() - last_joy_suggestion > ros::Duration(1.0))
 		return 0;
 	return suggestedAngularSpeed;
 }

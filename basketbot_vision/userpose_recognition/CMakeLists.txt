@@ -4,7 +4,7 @@ project(userpose_recognition)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED roscpp geometry_msgs tf message_generation)
+find_package(catkin REQUIRED roscpp geometry_msgs tf message_generation roslib)
 find_package(OpenCV REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(YAML REQUIRED yaml-cpp)
@@ -99,7 +99,7 @@ include_directories(include)
 # )
 
 ## Declare a cpp executable
-add_executable(userpose_recognition src/userpose_recognition_node.cpp src/UserPoseDisplay.cpp src/userpose_data.cpp src/main.cpp)
+add_executable(userpose_recognition src/userpose_recognition_node.cpp src/UserPoseDisplay.cpp src/userpose_data.cpp src/userpose_recognition.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes

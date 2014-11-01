@@ -53,10 +53,10 @@ class NiteTracker : public nite::UserTracker::NewFrameListener
 	FaceDetector faceDetector;
 		bool initDevice(openni::Device *device);
 		void onNewFrame(nite::UserTracker &);
+		void connectCb();
+		bool connected;
 	void imageCallback(const sensor_msgs::ImageConstPtr& orig_msg	);
 	void depthCallback(const sensor_msgs::ImageConstPtr& orig_msg	);
-	void tryFaceDetection(cv::Mat image,cv::Mat userMap,cv::Mat depthMap);
-	void faceDetectionThread(cv::Mat image,cv::Mat userMap,cv::Mat depthMap);
 	void publishCOMs(const nite::Array<nite::UserData>&);
 	void publishSkeletonPoints(nite::UserId,const nite::Skeleton &);
 	void publishJoint(nite::UserId id ,const nite::SkeletonJoint & joint);

@@ -1,8 +1,9 @@
 <launch>
- 
+<group ns="brain"> 
    <node name="player_recognition" pkg="player_tracker" type="player_recognition" output="screen" >
 	<remap from="/COMPoints" to="/camera/COMPoints" />
   </node>    
   
    <node name="basketbot_brain" pkg="basketbot_brain" type="basketbot_brain" output="screen" />
+</group>
 </launch>

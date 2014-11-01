@@ -16,9 +16,10 @@ class BasketBotBrain
 	void checkUnreliability();
 	ros::Time lastUpdate;
 	ros::Time latestPlayerLoss;
+	ros::Time latestStateChange;
 	ros::Duration elapsedTime;
 	//state 
-	enum State {NORMAL=0,FROZEN,SEARCH_LEFT, SEARCH_RIGHT} currentState;
+	enum State {NONE,NORMAL,FROZEN,SEARCH_LEFT, SEARCH_RIGHT} currentState;
 	
 	float stateDuration;
 	
@@ -34,6 +35,7 @@ class BasketBotBrain
 	float playerLostThreshold;
 	float outputSnappiness;
 	void setState(State, float seconds = 5.0);
+	void generateObstaclesData();
 	
 public:
 	BasketBotBrain(RosBrianBridge *,std::string);

@@ -17,3 +17,15 @@
 
 (RobotStatus ROBOTSTATUS)
 
+(ObstacleFront OBSTACLES)
+(ObstacleFrontLeft OBSTACLES)
+(ObstacleFrontRight OBSTACLES)
+(ObstacleRear OBSTACLES)
+(ObstacleRearLeft OBSTACLES)
+(ObstacleRearRight OBSTACLES)
+(ObstacleLeft OBSTACLES)
+(ObstacleRight OBSTACLES)
+
+(ProposedSpeedModule LINEARSPEED)
+
+(StateElapsed ELAPSEDTIME)

@@ -1,6 +1,5 @@
 <launch>
-<include file="$(find basketbot_mapping)/costmap_params/costmap.launch" />
-<include file="$(find basketbot_mapping)/costmap_params/slam.launch" />
-<node pkg="tf" type="static_transform_publisher" name="link2_broadcaster" args="0 0 0 0 0 0 1 base_link camera_link 30" />
+<include file="$(find basketbot_mapping)/launch/costmap.launch" />
+<include file="$(find basketbot_mapping)/launch/slam.launch" />
 
 </launch>
