@@ -1,9 +1,9 @@
 
 <launch>
 <arg name="senzarobot" value="$(optenv OPENNI_WATCHDOG false)" />
+<include file="$(find basketbot_launch)/launch/basketbot_tracker.launch"/> 
 <include file="$(find basketbot_launch)/launch/basketbot_openni.launch" unless="$(arg senzarobot)"/> 
 <include file="$(find basketbot_launch)/launch/fakelaser.launch"/> 
-<include file="$(find basketbot_launch)/launch/basketbot_tracker.launch"/> 
 
 
 <arg name="launch_file" default="basketbot_openni.launch" />

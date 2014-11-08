@@ -1,5 +1,5 @@
-(AND (DangerAhead)(ProposedForward)) => (&DEL.SpeedModule ANY);
-(AND (DangerBehind)(ProposedBackward)) => (&DEL.SpeedModule ANY);
+(AND (DangerAhead)(ProposedForward)) => (&DEL.SpeedModule ANY) (SpeedModule BACKWARD);
+(AND (DangerBehind)(ProposedBackward)) => (&DEL.SpeedModule ANY) (SpeedModule FORWARD);
 
 
 (AND (AND (ObstacleFront) (ObstacleFrontLeft)) (ObstacleFrontRight)) => (SpeedModule BACKWARD);

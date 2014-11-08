@@ -19,7 +19,7 @@ class BasketBotBrain
 	ros::Time latestStateChange;
 	ros::Duration elapsedTime;
 	//state 
-	enum State {NONE,NORMAL,FROZEN,SEARCH_LEFT, SEARCH_RIGHT} currentState;
+	enum State {NONE,NORMAL,FROZEN,SEARCH_LEFT, SEARCH_RIGHT,EXPLORE} currentState;
 	
 	float stateDuration;
 	

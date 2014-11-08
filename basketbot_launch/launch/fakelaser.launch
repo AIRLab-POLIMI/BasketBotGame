@@ -1,12 +1,10 @@
 <launch>
 
  <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan" output="screen" respawn="true">
- <remap from="image" to="/camera/depth/image_rect_raw" />
+ <remap from="image" to="/camera/depth/image_raw" />
  <param name="scan_time" value="0.033"/>
  <param name="scan_height" value="100"/>
  <param name="output_frame_id" value="laserscan_stabilized"/>
-<!-- <remap from="camera_info" to="/camera/depth_registered/camera_info" />-->
-<!-- che cazzo di nomi sono?-->
 </node>
 
 </launch>

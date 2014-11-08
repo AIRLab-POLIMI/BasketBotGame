@@ -6,7 +6,7 @@ project(nite_tracker)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED sensor_msgs roscpp image_transport nodelet cv_bridge tf message_generation)
+find_package(catkin REQUIRED sensor_msgs roscpp image_transport nodelet cv_bridge tf message_generation image_geometry)
 find_package(OpenCV REQUIRED)
 find_package(opentld_test REQUIRED)
 find_package(pcl_ros REQUIRED)

@@ -4,7 +4,10 @@
 class FaceDetector
 {
 	boost::mutex faces_profile_mutex;
+	
 protected:
+	virtual float calculateFaceSize(cv::Rect face, float distance);
+
 	unsigned int iteration;
 	bool working;
 	cv::CascadeClassifier face_front_classifier;

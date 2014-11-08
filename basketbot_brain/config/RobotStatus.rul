@@ -1,12 +1,20 @@
 (Frozen) =>  (&DEL.SpeedModule ANY)  (&DEL.RotSpeed ANY) ;
 
-(AND (SearchLeft) (NOT (PlayerVisible))) => (RobotStatus SEARCH_LEFT) 
-											(&DEL.RotSpeed ANY) 
-											(RotSpeed LEFT);
-(AND (SearchRight) (NOT (PlayerVisible))) =>(RobotStatus SEARCH_RIGHT) 
-											(&DEL.RotSpeed ANY)
-											(RotSpeed RIGHT);
-(AND (AND (Normal) (PlayerNotVisible)) (PlayerLeft)) => (RobotStatus SEARCH_LEFT);
-(AND (AND (Normal) (PlayerNotVisible)) (PlayerRight)) => (RobotStatus SEARCH_RIGHT);
-#(AND (ElapsedOne) (Normal) ) => (RobotStatus FROZEN);
-(AND (Frozen) (ElapsedOne)) => (RobotStatus NORMAL);
+
+
+#(AND (AND (Normal) (NOT(PlayerVisible)) ) (PlayerLeft)) => (RobotStatus SEARCH_LEFT);
+#(AND (AND (Normal) (NOT(PlayerVisible))  ) (PlayerRight)) => (RobotStatus SEARCH_RIGHT);
+#(AND (AND (Normal) (NOT(PlayerVisible))  )  (RobotRotatingLeft)) => (RobotStatus SEARCH_LEFT);
+#(AND (AND (Normal) (NOT(PlayerVisible))  )  (RobotRotatingRight)) => (RobotStatus SEARCH_RIGHT);
+(AND (Normal) (NOT(PlayerVisible))) => (RobotStatus EXPLORE);
+
+
+(AND (Frozen) (ElapsedOne)) => (RobotStatus EXPLORE);
+
+(AND (NOT(PlayerVisible))
+(AND (ElapsedOne)
+ (OR (SearchLeft) (SearchRight))
+)) => (RobotStatus EXPLORE);
+
+(AND (PlayerVisible) 
+  (OR (Exploring) (OR (SearchLeft) (SearchRight)))) => (RobotStatus NORMAL);

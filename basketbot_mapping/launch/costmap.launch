@@ -1,0 +1,8 @@
+<launch>
+
+  <!-- Run the costmap node -->
+  <node name="costmap_node" pkg="costmap_2d" type="costmap_2d_node" output="screen" >
+    <rosparam file="$(find basketbot_mapping)/costmap_params/costmap_params.yaml" command="load" ns="costmap" />
+  </node>
+
+</launch>

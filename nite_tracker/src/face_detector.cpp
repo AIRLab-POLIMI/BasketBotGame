@@ -100,7 +100,7 @@ void FaceDetector::findFacesProfile(bool reverse)
 void FaceDetector::findFaces(bool front_only)
 {
 	iteration++;
-	
+	//iteration = 1;
 	faces_front.clear();
 	faces_profile.clear();
 
@@ -155,6 +155,12 @@ void FaceDetector::checkRectangle(cv::Mat image, cv::Rect & rect)
 	if(rect.y + rect.height > image.rows)
 		rect.height = image.rows-rect.y;
 }
+
+float FaceDetector::calculateFaceSize(cv::Rect face, float distance)
+{
+	return face.width * distance / 50.0;
+}
+
 void FaceDetector::filterFacesByDepthInternal(cv::Mat depth,std::vector<cv::Rect> & faces,float min,float max)
 {
 	cv::Mat mask(depth.rows, depth.cols, CV_8U, Scalar(0));
@@ -168,7 +174,7 @@ void FaceDetector::filterFacesByDepthInternal(cv::Mat depth,std::vector<cv::Rect
 		cv::Rect face = faces[i];
 		Point center( face.x + face.width/2, face.y + face.height/2 );
 		float distance = cv::mean(depth(face),mask(face))[0];
-		float ratio = face.width * distance / 50.0;
+		float ratio = calculateFaceSize(face,distance);
 		bool compatibleFace = ratio > min && ratio < max;
 		double bgDistance;
 		checkRectangle(depth,faces_big[i]);
@@ -190,8 +196,8 @@ void FaceDetector::filterFacesByDepthInternal(cv::Mat depth,std::vector<cv::Rect
 
 void FaceDetector::filterFacesByDepth(cv::Mat depth)
 {
-	filterFacesByDepthInternal(depth,faces_profile,750,1150);
-	filterFacesByDepthInternal(depth,faces_front,650,1050);
+	filterFacesByDepthInternal(depth,faces_profile,85,105);
+	filterFacesByDepthInternal(depth,faces_front,75,95);
 }
 
 std::vector<int> FaceDetector::extractHumans(cv::Mat users)

@@ -18,7 +18,6 @@ NiteTracker::NiteTracker(ros::NodeHandle &nh):nh(nh), it(nh)
 
 
 	image_sub = it.subscribe("/camera/rgb/image_raw",2,&NiteTracker::imageCallback,this);
-	depth_sub = it.subscribe("/camera/depth_registered/image_raw",2,&NiteTracker::depthCallback,this);
 	initDevice(NULL);
 	image_transport::SubscriberStatusCallback itssc = boost::bind(&NiteTracker::connectCb, this);
 
@@ -32,18 +31,16 @@ NiteTracker::NiteTracker(ros::NodeHandle &nh):nh(nh), it(nh)
 
 	PointsPublisher = nh.advertise<pcl::PointCloud<pcl::PointXYZL> >("COMPoints",10,rssc,rssc);
 	SkeletonPointsPublisher = nh.advertise<pcl::PointCloud<pcl::PointXYZL> >("SkeletonPoints",10);
-
+	userTracker.addNewFrameListener(this);
 
 }
 void NiteTracker::connectCb()
 {
 	int ascoltatori = PointsPublisher.getNumSubscribers()+image_pub.getNumSubscribers();
 	if(!connected && ascoltatori > 0) {
-		userTracker.addNewFrameListener(this);
 		connected=true;
 	}
 	if(connected && ascoltatori == 0) {
-		userTracker.removeNewFrameListener(this);
 		connected=false;
 
 	}
@@ -53,7 +50,7 @@ void NiteTracker::humansCallback(nite_tracker::HumansData::ConstPtr humans)
 {
 	for(int i = 0; i<humans->humans.size(); i++) {
 		ros::Duration scarto = g_users[humans->humans[i]].firstSeen - humans->stamp;
-		std::cerr << "scarto: "<<scarto.toSec()<<std::endl;
+		//std::cerr << "scarto: "<<scarto.toSec()<<std::endl;
 		if(g_users[humans->humans[i]].firstSeen <= humans->stamp)
 			g_users[humans->humans[i]].human = true;
 	}
@@ -61,6 +58,8 @@ void NiteTracker::humansCallback(nite_tracker::HumansData::ConstPtr humans)
 
 void NiteTracker::imageCallback(const sensor_msgs::ImageConstPtr& rgb_msg)
 {
+	if(!connected)
+		return;
 	boost::lock_guard<boost::mutex> lock(m_mutex);
 	rgb_cache.push_front(rgb_msg);
 	checkCache();
@@ -78,6 +77,8 @@ void NiteTracker::onNewFrame(nite::UserTracker & userTracker)
 		std::cerr <<"nextframe failed"<<std::endl;
 		return;
 	}
+
+
 	depth_cache.push_front(userTrackerFrame);
 
 	checkCache();
@@ -118,7 +119,9 @@ void NiteTracker::updateUsers(const nite::Array<nite::UserData>& users)
 			ROS_INFO_STREAM("Lost user " << user.getId());
 			break;
 		}
-		if (user.isNew()) {
+		if (user.isNew())
+
+		{
 			g_users[user.getId()] = UserData();
 			g_users[user.getId()].firstSeen = ros::Time::now();
 			ROS_INFO_STREAM("Found a new user." << user.getId());
@@ -144,7 +147,7 @@ void NiteTracker::updateUsers(const nite::Array<nite::UserData>& users)
 		}
 
 		if(user.getSkeleton().getState() == nite::SKELETON_TRACKED && g_user.human ) {
-			ROS_INFO_STREAM("Now tracking user " << user.getId());
+			//ROS_INFO_STREAM("Now tracking user " << user.getId());
 			publishSkeletonPoints(user.getId(),user.getSkeleton());
 		}
 	}
@@ -242,7 +245,8 @@ tf::Quaternion NiteTracker::niteQuaternionToRealWorld(nite::Quaternion q)
 	return  tf::Quaternion(q.x,-q.y,-q.z,q.w);
 }
 
-
+std::set<int> debugCom;
+std::set<int> debugView;
 void NiteTracker::publishCOMs(const nite::Array<nite::UserData>& users)
 {
 	std::string frame_id = "camera_link2";
@@ -250,6 +254,7 @@ void NiteTracker::publishCOMs(const nite::Array<nite::UserData>& users)
 	pmsg->header.frame_id = frame_id;
 	pmsg->height = 1;
 	unsigned int contatore = 0;
+	debugCom.clear();
 	for (int i = 0; i < users.getSize(); ++i) {
 		const nite::UserData& user = users[i];
 		if(!g_users[user.getId()].human)
@@ -258,8 +263,11 @@ void NiteTracker::publishCOMs(const nite::Array<nite::UserData>& users)
 		pcl::PointXYZL point;
 		point.label = users[i].getId();
 		if(!users[i].isVisible()) {
+
 			point.x = point.y=point.z = 0;
 		} else {
+			debugCom.insert(users[i].getId());
+
 			tf::Vector3 com = nitePointToRealWorld(users[i].getCenterOfMass ());
 			point.x = com.x();
 			point.y = com.y() ;
@@ -270,45 +278,19 @@ void NiteTracker::publishCOMs(const nite::Array<nite::UserData>& users)
 	}
 	pmsg->width = pmsg->points.size();
 	PointsPublisher.publish(pmsg);
-	std::cerr<<"Compoints: "<<contatore<<std::endl;
+	//std::cerr<<"Compoints: "<<contatore<<std::endl;
 }
-void NiteTracker::analyzeFrame(const sensor_msgs::ImageConstPtr& rgb_msg,nite::UserTrackerFrameRef userTrackerFrame)
+
+void NiteTracker::publishUsersView(cv::Mat userMap, const nite::Array<nite::UserData>& users)
 {
-	try {
-		cv_bridge::CvImagePtr im = cv_bridge::toCvCopy(rgb_msg, sensor_msgs::image_encodings::BGR8);
-		last_image = *im;
-
-	} catch (cv_bridge::Exception& e) {
-		ROS_ERROR("cv_bridge exception: %s", e.what());
-		return;
-	}
-
 	cv::Mat image = last_image.image;
-
-	nite::UserMap um = userTrackerFrame.getUserMap();
-	openni::VideoFrameRef depthRef = userTrackerFrame.getDepthFrame();
-	cv::Mat userMap(um.getHeight(),um.getWidth(),CV_16S,(void*) um.getPixels());
-	cv::Mat depthMap(depthRef.getHeight(),depthRef.getWidth(),CV_16U,(void*) depthRef.getData());
-	userMap.convertTo(userMap,CV_8U);
 	cv::Mat userMapMask = userMap.clone();
-
-	cv_bridge::CvImage userImage;
-	userImage.image = userMap;
-	userImage.encoding = sensor_msgs::image_encodings::TYPE_8UC1;
-	sensor_msgs::ImagePtr userImagePtr = userImage.toImageMsg();
-	userImagePtr->header.stamp = rgb_msg->header.stamp;
-	user_pub.publish(userImagePtr);
-
-
-
-	const nite::Array<nite::UserData>& users = userTrackerFrame.getUsers();
-
-	updateUsers(users);
-
-	publishCOMs(users);
+	debugView.clear();
 	int contatore =0;
 	for (int i = 0; i < users.getSize(); ++i) {
 		const nite::UserData& user = users[i];
+
+
 		if(!user.isVisible())
 			break;
 		float x,y;
@@ -321,6 +303,7 @@ void NiteTracker::analyzeFrame(const sensor_msgs::ImageConstPtr& rgb_msg,nite::U
 		if(g_users[user.getId()].human) {
 			image.setTo(cv::Scalar(5,155,5),userMapMask);
 			contatore++;
+			debugView.insert(user.getId());
 			putText(image, c , cv::Point(x,y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0,255,5),5);
 		} else {
 			image.setTo(cv::Scalar(5,5,155),userMapMask);
@@ -336,13 +319,58 @@ void NiteTracker::analyzeFrame(const sensor_msgs::ImageConstPtr& rgb_msg,nite::U
 			float X,Y;
 			userTracker.convertJointCoordinatesToDepth(headPos.x, headPos.y, headPos.z, &X, &Y);
 			putText(image, "H" , cv::Point(X,Y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(5,5,255),5);
-			std::cerr << "X: " << X << "    Y:" << Y << "    "<<std::endl;
+			/*std::cerr << "X: " << X << "    Y:" << Y << "    "<<std::endl;
 			std::cerr <<headOr.x << " "<<headOr.y<<" "<<headOr.z<<" "<<headOr.w<<std::endl;
-			std::cerr <<"scheletro"<<std::endl;
+			std::cerr <<"scheletro"<<std::endl;*/
 		}
 	}
 	image_pub.publish(last_image.toImageMsg());
-	std::cerr <<"image: "<<contatore<<std::endl;
+}
+void NiteTracker::analyzeFrame(const sensor_msgs::ImageConstPtr& rgb_msg,nite::UserTrackerFrameRef userTrackerFrame)
+{
+	try {
+		cv_bridge::CvImagePtr im = cv_bridge::toCvCopy(rgb_msg, sensor_msgs::image_encodings::BGR8);
+		last_image = *im;
+
+	} catch (cv_bridge::Exception& e) {
+		ROS_ERROR("cv_bridge exception: %s", e.what());
+		return;
+	}
+
+
+
+	nite::UserMap um = userTrackerFrame.getUserMap();
+	openni::VideoFrameRef depthRef = userTrackerFrame.getDepthFrame();
+	cv::Mat userMap(um.getHeight(),um.getWidth(),CV_16S,(void*) um.getPixels());
+	cv::Mat depthMap(depthRef.getHeight(),depthRef.getWidth(),CV_16U,(void*) depthRef.getData());
+	userMap.convertTo(userMap,CV_8U);
+
+	cv_bridge::CvImage userImage;
+	userImage.image = userMap;
+	userImage.encoding = sensor_msgs::image_encodings::TYPE_8UC1;
+	sensor_msgs::ImagePtr userImagePtr = userImage.toImageMsg();
+	userImagePtr->header.stamp = rgb_msg->header.stamp;
+	user_pub.publish(userImagePtr);
+
+
+
+	const nite::Array<nite::UserData>& users = userTrackerFrame.getUsers();
+
+	updateUsers(users);
+
+	publishCOMs(users);
+	publishUsersView(userMap,users);
+
+	for(std::set<int>::iterator it = debugView.begin(); it!= debugView.end(); ++it) {
+		if(debugCom.find(*it) == debugCom.end()) {
+			std::cerr<<"utente"<<std::endl;
+			exit(0);
+		}
+
+
+	}
+
+	//std::cerr <<"image: "<<contatore<<std::endl;
 }
 void NiteTracker::checkCache()
 {
@@ -372,11 +400,6 @@ void NiteTracker::checkCache()
 
 	analyzeFrame(rgb_msg,userTrackerFrame);
 	depth_cache.pop_back();
-	rgb_cache.pop_back();
+	//rgb_cache.pop_back();
 
-}
-
-void NiteTracker::depthCallback(const sensor_msgs::ImageConstPtr& rgb_msg)
-{
-	return;
 }

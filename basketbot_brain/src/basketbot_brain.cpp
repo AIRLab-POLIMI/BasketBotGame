@@ -97,12 +97,12 @@ void BasketBotBrain::runBrian()
 
 BasketBotBrain::BasketBotBrain(RosBrianBridge *messenger,std::string config_path): messenger(messenger),brian(config_path,1),currentState(NONE)
 {
-	distanceOffset = 2;
-	distanceSensitivity = 0.5 ;
-	playerSpeedSensitivity = 0.5;
+	distanceOffset = 1;
+	distanceSensitivity = 0.2 ;
+	playerSpeedSensitivity = 0.2;
 	reverseRotationThreshold = 0.5;
 	outputSnappiness = 0;
-	playerNotVisibleThreshold = 1.8;
+	playerNotVisibleThreshold = 5.0;
 	
 	setState(NORMAL);
 }

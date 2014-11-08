@@ -1,0 +1,2 @@
+(RobotMovingForward) => (SpeedModule BACKWARD_VERY_SLOW);
+(RobotMovingBackward) => (SpeedModule FORWARD_VERY_SLOW);
