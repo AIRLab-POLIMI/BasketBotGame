@@ -20,22 +20,32 @@ class BasketbotOdom
 	ros::NodeHandle nh;
 	ros::Subscriber encoderSubscriber;
 	ros::Subscriber tiltSubscriber;
+	ros::Subscriber velocitySubscriber;
 	ros::Time lastOdomTime;
 	ros::Timer timer;
+	ros::Time lastVelocityMessage;
 	void timerCallback(const ros::TimerEvent&);
 	tf::TransformBroadcaster tfBroadcaster;
 	ros::Publisher odomPublisher;
 	ros::Publisher tiltoneOdometryPublisher;
 	ros::Publisher tiltoneTiltPublisher;
+	ros::Publisher tiltoneVelocityPublisher;
 
 	void encoderCallback(r2p::Velocity::ConstPtr );
 	void tiltCallback(tiltone::Tilt::ConstPtr );
+	void velocityCallback(r2p::Velocity::ConstPtr velMsg);
 public:
 	BasketbotOdom();
 };
 
-void BasketbotOdom::timerCallback(const ros::TimerEvent&)
+void BasketbotOdom::timerCallback(const ros::TimerEvent& te)
 {
+	double elapsed = (te.last_real - lastOdomTime).toSec();
+	if(elapsed > 5.0) {
+		ROS_WARN("Error, no odom received");
+		encoderSubscriber = nh.subscribe("/tiltone/odometry", 1,&BasketbotOdom::encoderCallback,this );
+		lastOdomTime = ros::Time::now();
+	}
 	{
 		tf::Quaternion tfq(tf::Vector3(0,1,0),-tilt);
 		geometry_msgs::Quaternion odom_quat;
@@ -107,7 +117,20 @@ void BasketbotOdom::timerCallback(const ros::TimerEvent&)
 		//publish the message
 		odomPublisher.publish(odom);
 	}
+	if((te.last_real - lastVelocityMessage).toSec() > 5.0) {
+		lastVelocityMessage = ros::Time::now();
+		r2p::Velocity::Ptr vel(new r2p::Velocity);
+		vel->x = 0;
+		vel->y = 0;
+		vel->w = 0;
+		tiltoneVelocityPublisher.publish(vel);
+	}
+}
 
+void BasketbotOdom::velocityCallback(r2p::Velocity::ConstPtr velMsg)
+{
+	tiltoneVelocityPublisher.publish(velMsg);
+	lastVelocityMessage = ros::Time::now();
 }
 
 void BasketbotOdom::encoderCallback(r2p::Velocity::ConstPtr velMsg)
@@ -147,14 +170,17 @@ BasketbotOdom::BasketbotOdom()
 {
 	odomPublisher = nh.advertise<nav_msgs::Odometry>("/odom", 50);
 	encoderSubscriber = nh.subscribe("/tiltone/odometry", 1,&BasketbotOdom::encoderCallback,this );
+	lastOdomTime = ros::Time::now();
 	tiltSubscriber = nh.subscribe("/tiltone/tilt", 1,&BasketbotOdom::tiltCallback,this );
 	lastOdomTime = ros::Time::now();
+	velocitySubscriber = nh.subscribe("/tiltone/Velocity", 1,&BasketbotOdom::velocityCallback,this );
 	x = y = th = 0;
 	vx = vy = vth = 0;
 	tilt = 0;
 	tiltoneOdometryPublisher =nh.advertise<r2p::Velocity>("/tiltone/Odometry", 2);
+	tiltoneVelocityPublisher =nh.advertise<r2p::Velocity>("/tiltone/velocity", 2);
 	tiltoneTiltPublisher = nh.advertise<tiltone::Tilt>("/tiltone/Tilt", 2);
-	timer = nh.createTimer(ros::Duration(0.1), &BasketbotOdom::timerCallback,this);
+	timer = nh.createTimer(ros::Duration(1.0/30.0), &BasketbotOdom::timerCallback,this);
 }
 int main(int argc, char **argv)
 {

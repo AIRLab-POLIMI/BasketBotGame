@@ -1,0 +1,9 @@
+(AND (GoalFront) (GoalFar)) =>  (SpeedModule FORWARD);
+(AND (GoalFar) (GoalRear)) => (SpeedModule BACKWARD);
+(AND (GoalLeft) (GoalFront) ) => (RotSpeed LEFT);
+
+(AND (GoalRight) (GoalFront) ) => (RotSpeed RIGHT);
+
+(AND (GoalRight) (GoalRear) ) => (RotSpeed LEFT);
+(AND (GoalLeft) (GoalRear) ) => (RotSpeed RIGHT);
+(DebugFlag) => (RotSpeed STEADY) (SpeedModule STEADY);

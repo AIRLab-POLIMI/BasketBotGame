@@ -17,7 +17,6 @@ NiteTracker::NiteTracker(ros::NodeHandle &nh):nh(nh), it(nh)
 	nite::NiTE::initialize();
 
 
-	image_sub = it.subscribe("/camera/rgb/image_raw",2,&NiteTracker::imageCallback,this);
 	initDevice(NULL);
 	image_transport::SubscriberStatusCallback itssc = boost::bind(&NiteTracker::connectCb, this);
 
@@ -25,13 +24,13 @@ NiteTracker::NiteTracker(ros::NodeHandle &nh):nh(nh), it(nh)
 	face_pub = it.advertise("faces", 1);
 	user_pub = it.advertise("users", 1);
 
-	humansSubscriber = nh.subscribe("humans", 1,&NiteTracker::humansCallback,this );
+	
 	std::cerr <<"inizialato"<<std::endl;
 	ros::SubscriberStatusCallback rssc = boost::bind(&NiteTracker::connectCb, this);
 
 	PointsPublisher = nh.advertise<pcl::PointCloud<pcl::PointXYZL> >("COMPoints",10,rssc,rssc);
 	SkeletonPointsPublisher = nh.advertise<pcl::PointCloud<pcl::PointXYZL> >("SkeletonPoints",10);
-	userTracker.addNewFrameListener(this);
+	
 
 }
 void NiteTracker::connectCb()
@@ -39,10 +38,16 @@ void NiteTracker::connectCb()
 	int ascoltatori = PointsPublisher.getNumSubscribers()+image_pub.getNumSubscribers();
 	if(!connected && ascoltatori > 0) {
 		connected=true;
+		userTracker.addNewFrameListener(this);
+		humansSubscriber = nh.subscribe("humans", 1,&NiteTracker::humansCallback,this );
+			image_sub = it.subscribe("/camera/rgb/image_raw",2,&NiteTracker::imageCallback,this);
+
 	}
 	if(connected && ascoltatori == 0) {
 		connected=false;
-
+		userTracker.removeNewFrameListener(this);
+		humansSubscriber.shutdown();
+		image_sub.shutdown();
 	}
 }
 
@@ -58,8 +63,7 @@ void NiteTracker::humansCallback(nite_tracker::HumansData::ConstPtr humans)
 
 void NiteTracker::imageCallback(const sensor_msgs::ImageConstPtr& rgb_msg)
 {
-	if(!connected)
-		return;
+
 	boost::lock_guard<boost::mutex> lock(m_mutex);
 	rgb_cache.push_front(rgb_msg);
 	checkCache();
@@ -364,7 +368,7 @@ void NiteTracker::analyzeFrame(const sensor_msgs::ImageConstPtr& rgb_msg,nite::U
 	for(std::set<int>::iterator it = debugView.begin(); it!= debugView.end(); ++it) {
 		if(debugCom.find(*it) == debugCom.end()) {
 			std::cerr<<"utente"<<std::endl;
-			exit(0);
+			//exit(0);
 		}
 
 

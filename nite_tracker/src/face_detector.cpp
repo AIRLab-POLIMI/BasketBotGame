@@ -57,7 +57,23 @@ bool FaceDetector::loadClassifier(std::string name, cv::CascadeClassifier &casca
 		return false;
 }
 
-
+std::vector<cv::Point3d> FaceDetector::getFacesCameraCoords()
+{
+	std::vector<cv::Point3d> coords;
+	for ( size_t i = 0; i < faces_front.size(); i++ ) {
+		cv::Rect face = faces_front[i];
+		Point center( face.x + face.width/2, face.y + face.height/2 );
+		cv::Point3d point(center.x,center.y,faces_front_distances[i]);
+		coords.push_back(point);
+	}
+	for ( size_t i = 0; i < faces_profile.size(); i++ ) {
+		cv::Rect face = faces_profile[i];
+		Point center( face.x + face.width/2, face.y + face.height/2 );
+		cv::Point3d point(center.x,center.y,faces_profile_distances[i]);
+		coords.push_back(point);
+	}
+	return coords;
+}
 void FaceDetector::shrinkRectangles(std::vector<cv::Rect> &rectangles,float ratio=0.5)
 {
 	float right = 0.5+0.5*ratio;
@@ -106,7 +122,7 @@ void FaceDetector::findFaces(bool front_only)
 
 	bool alternate_mode = true;
 
-	if(front_only || alternate_mode?(iteration%3 == 0):true) {
+	if( front_only || alternate_mode?(iteration%3 == 0):true) {
 		face_front_classifier.detectMultiScale( frame_gray, faces_front, 1.1, 2, 0|CASCADE_SCALE_IMAGE, Size(30, 30) );
 		shrinkRectangles(faces_front);
 	}
@@ -161,11 +177,12 @@ float FaceDetector::calculateFaceSize(cv::Rect face, float distance)
 	return face.width * distance / 50.0;
 }
 
-void FaceDetector::filterFacesByDepthInternal(cv::Mat depth,std::vector<cv::Rect> & faces,float min,float max)
+void FaceDetector::filterFacesByDepthInternal(cv::Mat depth,std::vector<cv::Rect> & faces,std::vector<float> &faces_distances,float min,float max)
 {
 	cv::Mat mask(depth.rows, depth.cols, CV_8U, Scalar(0));
 	cv::inRange(depth, 10, 10000000, mask);
 	std::vector<cv::Rect> faces_tmp;
+	std::vector<float> faces_distances_tmp;
 	std::vector<cv::Rect> faces_big = faces;
 	shrinkRectangles(faces_big,2.0);
 
@@ -176,28 +193,43 @@ void FaceDetector::filterFacesByDepthInternal(cv::Mat depth,std::vector<cv::Rect
 		float distance = cv::mean(depth(face),mask(face))[0];
 		float ratio = calculateFaceSize(face,distance);
 		bool compatibleFace = ratio > min && ratio < max;
+		
 		double bgDistance;
 		checkRectangle(depth,faces_big[i]);
 		minMaxLoc(depth(faces_big[i]),NULL,&bgDistance,NULL,NULL,mask(faces_big[i]));
-		compatibleFace = compatibleFace && bgDistance-distance>200;
+		bool compatibleHead = bgDistance-distance>200;
+		compatibleFace = compatibleFace && compatibleHead;
 		char c[100];
 		sprintf(c,"%.2f %.2f",ratio,(float)bgDistance -distance);
-		cv::rectangle(image,faces_big[i], cv::Scalar(0,0,255));
+		if(compatibleHead)
+			cv::rectangle(image,faces_big[i], cv::Scalar(0,255,0));
+			else
+			cv::rectangle(image,faces_big[i], cv::Scalar(0,0,255));
 		if(compatibleFace)
+		{
 			putText(image, c , center, cv::FONT_HERSHEY_COMPLEX_SMALL, 1, cv::Scalar(0,255,0),1);
+			
+		}
 		else
+		{
 			putText(image, c , center, cv::FONT_HERSHEY_COMPLEX_SMALL, 1, cv::Scalar(0,0,255),1);
+			
+		}
 		if(compatibleFace)
+		{
 			faces_tmp.push_back(face);
+			faces_distances_tmp.push_back(distance);
+		}
 	}
 	std::swap(faces_tmp,faces);
+	std::swap(faces_distances_tmp,faces_distances);
 }
 
 
 void FaceDetector::filterFacesByDepth(cv::Mat depth)
 {
-	filterFacesByDepthInternal(depth,faces_profile,85,105);
-	filterFacesByDepthInternal(depth,faces_front,75,95);
+	filterFacesByDepthInternal(depth,faces_profile,faces_profile_distances,85,105);
+	filterFacesByDepthInternal(depth,faces_front,faces_front_distances,75,95);
 }
 
 std::vector<int> FaceDetector::extractHumans(cv::Mat users)

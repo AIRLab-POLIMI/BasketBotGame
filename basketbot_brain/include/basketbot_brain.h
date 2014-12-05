@@ -3,14 +3,19 @@
 #include <ros/ros.h>
 
 #include "BrianWrapper.h"
+enum BrainState {NONE,NORMAL,FROZEN,SEARCH_LEFT, SEARCH_RIGHT,EXPLORE};
+#include <tf/transform_listener.h>
+#include <player_tracker/PosPrediction.h>
+#include <geometry_msgs/PointStamped.h>
+#include "strategy.h"
 class RosBrianBridge;
-
-
 class BasketBotBrain
 {
+private:
 	RosBrianBridge *messenger;
 	BrianWrapper brian;
 	BrianWrapper::DataContainer input, output;
+	Strategy strategy;
 	void runBrian();
 	float applyShape(float,float);
 	void checkUnreliability();
@@ -18,13 +23,14 @@ class BasketBotBrain
 	ros::Time latestPlayerLoss;
 	ros::Time latestStateChange;
 	ros::Duration elapsedTime;
-	//state 
-	enum State {NONE,NORMAL,FROZEN,SEARCH_LEFT, SEARCH_RIGHT,EXPLORE} currentState;
-	
+	//state
+	BrainState currentState;
+
 	float stateDuration;
-	
-	
+
+
 	//PARAMETERS
+	float orientationOffset;
 	float distanceOffset;
 	float distanceSensitivity;
 	float rotationCommandSensitivity;
@@ -34,15 +40,19 @@ class BasketBotBrain
 	float playerNotVisibleThreshold;
 	float playerLostThreshold;
 	float outputSnappiness;
-	void setState(State, float seconds = 5.0);
+	void setState(float, float seconds = 5.0);
 	void generateObstaclesData();
-	
+
 public:
 	BasketBotBrain(RosBrianBridge *,std::string);
+	BrainState getState() {
+		return currentState;
+	}
 	void freeze(float milliseconds);
 	void spinOnce();
 	void rotateAndSearch(float direction);
-	
+	void setParameter(std::string, float);
+	float getCurrentStateElapsed();
 };
 
 #endif

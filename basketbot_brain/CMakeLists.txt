@@ -108,6 +108,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
         src/ros_brian_bridge.cpp
 	src/basketbot_brain.cpp
 	src/obstacles_listener.cpp
+	src/strategy.cpp
 )
 
 ## Add cmake target dependencies of the executable/library

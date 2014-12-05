@@ -7,6 +7,14 @@
 std::string brian_config_path = ros::package::getPath("basketbot_brain") + "/config";
 
 float RosBrianBridge::maxSpeeds = 0.25;
+
+void RosBrianBridge::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
+	goal = *msg;
+	goal.header.stamp = ros::Time::now();
+}
+
+
 void RosBrianBridge::setSpeed(float v, float rot)
 {
 	geometry_msgs::Twist vel_msg;
@@ -16,7 +24,9 @@ void RosBrianBridge::setSpeed(float v, float rot)
 
 
 	//limit values
-	float maxV = maxSpeeds,maxR = 2.0+maxSpeeds;
+	float maxV = maxSpeeds,maxR = 2.0*maxSpeeds;
+	v *= maxV;
+	rot*= maxR;
 	v=std::min(std::max(v,-maxV),maxV);
 	rot=std::min(std::max(rot,-maxR),maxR);
 
@@ -32,26 +42,26 @@ void RosBrianBridge::userPoseCallback(const userpose_recognition::UserPoseConstP
 	std::cerr << "rilevata posa: "<<msg->poseName<<std::endl;
 	if(msg->poseName=="surrender")
 		brain.freeze(5.0);
-	
+
 }
 
 void RosBrianBridge::odomCallback(const nav_msgs::Odometry::ConstPtr & msg)
 {
 	last_odometry_v = msg->twist.twist.linear.x;
 	last_odometry_alpha= msg->twist.twist.angular.z;
-	
+
 }
 
 RosBrianBridge::RosBrianBridge():brain(this,brian_config_path)
 {
 	predictionSubscriber = node.subscribe("PosPrediction", 2, &RosBrianBridge::predictionCallback,this);
 	commandsPublisher = node.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
-	commandsPublisherTiltone = node.advertise<r2p::Velocity>("/tiltone/velocity", 10);
+	commandsPublisherTiltone = node.advertise<r2p::Velocity>("/tiltone/Velocity", 10);
 	userPoseSubscriber = node.subscribe("UserPose", 2, &RosBrianBridge::userPoseCallback,this);
 	suggestedCmdVelKey = node.subscribe("/suggested_cmd_vel", 2,&RosBrianBridge::desiredCmdVelKeyCallback,this);
 	suggestedCmdVelJoy = node.subscribe("/tiltone/velocityD", 2,&RosBrianBridge::desiredCmdVelJoyCallback,this);
 	odomSubscriber = node.subscribe("/odom", 2,&RosBrianBridge::odomCallback,this);
-
+	goalSubscriber = node.subscribe("goal",2,&RosBrianBridge::goalCallback,this);
 	suggestedLinearSpeed = suggestedAngularSpeed = 0;
 	last_odometry_v = last_odometry_alpha = 0;
 	currentUnreliability = 10000.0;
@@ -141,7 +151,38 @@ RosBrianBridge::BiFloat RosBrianBridge::getRobotSpeed()
 	result.first = last_odometry_v;
 	result.second = last_odometry_alpha;
 	return result;
-	
+
+}
+
+RosBrianBridge::Goal RosBrianBridge::getGoal()
+{
+	Goal result;
+	float age = (ros::Time::now()-goal.header.stamp).toSec();
+	std::cerr<<"age" <<age<<std::endl;
+	if(age > 2)
+		age = -1;
+	result.age = age;
+	try {
+		tf::StampedTransform tr;
+		transformListener.lookupTransform ( "odom","base_footprint",ros::Time(0),tr);
+		tf::Transform robotTransform=tr;
+
+		tf::Transform userTransform;
+		userTransform.setOrigin(tf::Vector3(goal.pose.position.x,goal.pose.position.y,0));
+		userTransform.setRotation(tf::Quaternion(0,0,0,1));
+
+		tf::Transform transform = robotTransform.inverse() * userTransform;
+
+		result.distance =  sqrt(transform.getOrigin().x() * transform.getOrigin().x() +
+		                        transform.getOrigin().y() * transform.getOrigin().y());
+		result.angle = atan2(transform.getOrigin().y(),transform.getOrigin().x());
+
+	} catch(...) {
+		result.age = -1;
+	}
+
+	return result;
+
 }
 float RosBrianBridge::getPlayerPositionUnreliability()
 {

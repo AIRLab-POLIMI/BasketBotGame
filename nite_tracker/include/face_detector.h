@@ -22,13 +22,18 @@ protected:
 	cv::Mat image;
 	std::vector<cv::Rect> faces_front;
 	std::vector<cv::Rect> faces_profile;
+	std::vector<float> faces_front_distances;
+	std::vector<float> faces_profile_distances;
+	
 	void findFacesProfile(bool reverse);
 	void drawDetectedFaces(cv::Scalar color= cv::Scalar(0,255,255));
-	void filterFacesByDepthInternal(cv::Mat depth,std::vector<cv::Rect> &,float min,float max);
+	void filterFacesByDepthInternal(cv::Mat depth,std::vector<cv::Rect> &,std::vector<float> &,float min,float max);
 	void checkRectangle(cv::Mat image, cv::Rect &);
 public:
 	FaceDetector();
 	void analyze(cv::Mat,cv::Mat);
 	int analyze(cv::Mat image);
 	std::vector<int> extractHumans(cv::Mat);
+	std::vector<cv::Point3d> getFacesCameraCoords();
+
 };

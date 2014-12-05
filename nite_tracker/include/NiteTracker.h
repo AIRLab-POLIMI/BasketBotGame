@@ -48,7 +48,6 @@ class NiteTracker : public nite::UserTracker::NewFrameListener
 	void checkCache();
 	void analyzeFrame(const sensor_msgs::ImageConstPtr& orig_msg,nite::UserTrackerFrameRef);
 	void updateUsers(const nite::Array<nite::UserData>&);
-	FaceDetector faceDetector;
 	bool initDevice(openni::Device *device);
 	void onNewFrame(nite::UserTracker &);
 	void connectCb();

@@ -4,6 +4,6 @@
 	<remap from="/COMPoints" to="/camera/COMPoints" />
   </node>    
   
-   <node name="basketbot_brain" pkg="basketbot_brain" type="basketbot_brain" output="screen" />
+   <node name="basketbot_brain" pkg="basketbot_brain" type="basketbot_brain" output="screen"  />
 </group>
 </launch>

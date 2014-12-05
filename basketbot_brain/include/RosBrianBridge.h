@@ -5,15 +5,22 @@
 #include <player_tracker/PosPrediction.h>
 #include <r2p/Velocity.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/PoseStamped.h>
 #include "basketbot_brain.h"
 #include "obstacles_listener.h"
 #include <userpose_recognition/UserPose.h>
 #include <nav_msgs/Odometry.h>
+#include <tf/transform_listener.h>
 
 class RosBrianBridge 
 {
 public:
 	typedef std::pair<float,float> BiFloat;
+	struct Goal{
+		float distance;
+		float angle;
+		float age;
+	};
 	private:
 	float last_odometry_v;
 	float last_odometry_alpha;
@@ -26,6 +33,9 @@ public:
 	ros::Subscriber suggestedCmdVelKey;
 	ros::Subscriber suggestedCmdVelJoy;
 	ros::Subscriber odomSubscriber;
+	ros::Subscriber goalSubscriber;
+	tf::TransformListener transformListener;
+	
 	
 	static float maxSpeeds;
 	BasketBotBrain brain;
@@ -35,6 +45,7 @@ public:
 	void desiredCmdVelJoyCallback(const r2p::Velocity::ConstPtr& msg);
 	void userPoseCallback(const userpose_recognition::UserPoseConstPtr &);
 	void odomCallback(const nav_msgs::Odometry::ConstPtr &);
+	void goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 	ros::Time last_joy_suggestion;
 	
 	
@@ -42,13 +53,13 @@ public:
 	float currentUnreliability;
 	float suggestedLinearSpeed;
 	float suggestedAngularSpeed;
-	//float distance;
-	//float angle;
+	
 	
 	float predictedX;
 	float predictedY;
 	float predictedVX;
 	float predictedVY;
+	geometry_msgs::PoseStamped goal;
 	
 public:
 	void setSpeed(float v, float rot);
@@ -61,6 +72,7 @@ public:
 	float getSuggestedLinearSpeed();
 	float getSuggestedAngularSpeed();
 	BiFloat getRobotSpeed();
+	Goal getGoal();
 	std::vector<float> getObstacles();
 	RosBrianBridge();
 	~RosBrianBridge() {}

@@ -26,7 +26,7 @@ void BasketBotBrain::checkUnreliability()
 	{
 		std::cout <<"torno indietro"<< (ros::Time::now()-latestPlayerLoss).toSec()<<std::endl;
 		input["Unreliability"] = 2.5;
-		currentState=NORMAL;
+		//currentState=NORMAL;
 	}
 	
 }
@@ -47,13 +47,17 @@ void BasketBotBrain::generateObstaclesData()
 	input["ObstacleRight"] = obstacles[6];
 	input["ObstacleFrontRight"] = obstacles[7];
 }
+float BasketBotBrain::getCurrentStateElapsed()
+{
+	return (ros::Time::now()-latestStateChange).toSec();
+}
 void BasketBotBrain::runBrian()
 {
-	if(currentState != NORMAL) {
+	/*if(currentState != NORMAL) {
 		stateDuration -= elapsedTime.toSec();
 		if(stateDuration <= 0)
 			currentState = NORMAL;
-	}
+	}*/
 	
 	generateObstaclesData();
 	
@@ -61,13 +65,17 @@ void BasketBotBrain::runBrian()
 
 	//create brian variables
 
+	RosBrianBridge::Goal goal = messenger->getGoal();
+	input["GoalDistance"] = goal.distance;
+	input["GoalAngle"] = goal.angle;
+	input["GoalAge"] = goal.age;
 	RosBrianBridge::BiFloat robotSpeeds = messenger->getRobotSpeed();
 	input["RobotLinearSpeed"] = robotSpeeds.first;
 	input["RobotAngularSpeed"] = robotSpeeds.second;
 	input["PlayerDistance" ] = (messenger->getPlayerDistance() - distanceOffset) * distanceSensitivity;
-	input["PlayerOrientation"] = messenger->getPlayerOrientation();
+	input["PlayerOrientation"] = messenger->getPlayerOrientation()+orientationOffset;
 	input["PlayerVelocityX"] = messenger->getPlayerVelocityX()*playerSpeedSensitivity;
-	input["PlayerVelocityY"] = messenger->getPlayerVelocityY()*playerSpeedSensitivity;
+	input["PlayerVelocityY"] = messenger->getPlayerVelocityY()*playerSpeedSensitivity*3.0;
 	input["DebugFlag"] = 1;
 
 	input["SuggestedLinearSpeed" ] = messenger->getSuggestedLinearSpeed();
@@ -75,9 +83,9 @@ void BasketBotBrain::runBrian()
 
 	checkUnreliability();
 
-	input["RobotStatus"] = currentState;
+	
 
-	input["StateElapsed"] = (ros::Time::now()-latestStateChange).toSec();
+	input["StateElapsed"] = getCurrentStateElapsed();
 	output = brian.execute(input);
 
 	float speed = 0,rotation=0;
@@ -88,25 +96,48 @@ void BasketBotBrain::runBrian()
 	messenger->setSpeed(speed,rotation);
 
 
-	setState(BasketBotBrain::State ( (int) round(output["RobotStatus"])));
+	setState( output["RobotStatus"]);
+	output["RobotStatus"] = (int) currentState;
+	std::cerr << (int) currentState<<std::endl;
+	/*if(input["StateElapsed"] > 5.0 && currentState != NORMAL)
+	{
+		setState(NORMAL);
+		std::cerr <<"reset"<<std::endl;
+	}*/
 	
-	
-
 }
 
 
-BasketBotBrain::BasketBotBrain(RosBrianBridge *messenger,std::string config_path): messenger(messenger),brian(config_path,1),currentState(NONE)
+BasketBotBrain::BasketBotBrain(RosBrianBridge *messenger,std::string config_path): messenger(messenger),brian(config_path,1),currentState(NONE),strategy(this)
 {
+	orientationOffset = 0;
 	distanceOffset = 1;
 	distanceSensitivity = 0.2 ;
 	playerSpeedSensitivity = 0.2;
 	reverseRotationThreshold = 0.5;
 	outputSnappiness = 0;
-	playerNotVisibleThreshold = 5.0;
+	playerNotVisibleThreshold = 8.0;
 	
 	setState(NORMAL);
 }
-
+void BasketBotBrain::setParameter(std::string name, float value)
+{
+	if(name == "distanceOffset")
+		distanceOffset = value;
+	else if(name == "distanceSensitivity")
+		distanceSensitivity = value;
+	else if(name == "playerSpeedSensitivity")
+		playerSpeedSensitivity = 0.2;
+	else if(name == "outputSnappiness")
+		outputSnappiness = value;
+	else if(name == "orientationOffset")
+		orientationOffset = value;
+	else
+	{
+		std::cerr<<"invalid brian parameter"<<std::endl;
+		exit(1);
+	}
+}
 float BasketBotBrain::applyShape(float input,float shape)
 {
 	if(shape > 0)
@@ -124,18 +155,20 @@ void BasketBotBrain::freeze(float seconds)
 
 }
 
-void BasketBotBrain::setState(State s, float seconds)
+void BasketBotBrain::setState(float _s, float seconds)
 {
+	BrainState s = BrainState((int) round(_s));
 	if(s == NONE)
 		return;
 	if(currentState != s)
 		latestStateChange = ros::Time::now();
 	currentState = s;
 	stateDuration = seconds;
-	
-	
+	input["RobotStatus"] = _s;
 	
 }
+
+
 void BasketBotBrain::spinOnce()
 {
 	ros::Time n =ros::Time::now();

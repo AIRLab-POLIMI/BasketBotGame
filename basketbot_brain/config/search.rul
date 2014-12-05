@@ -1,2 +1,8 @@
-(SearchLeft) => (&DEL.RotSpeed ANY) (RotSpeed LEFT);
-(SearchRight) =>(&DEL.RotSpeed ANY) (RotSpeed RIGHT);
+(SearchLeft) => (RotSpeed LEFT_SLOW);
+(SearchRight) => (RotSpeed RIGHT_SLOW);
+
+(AND (NOT(ElapsedFive)) (SearchLeft) ) => (RobotStatus SEARCH_LEFT);
+(AND (NOT(ElapsedFive)) (SearchRight) ) => (RobotStatus SEARCH_RIGHT);
+
+(ElapsedFive) => (RobotStatus EXPLORE);
+

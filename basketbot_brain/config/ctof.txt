@@ -1,6 +1,9 @@
 (PlayerDistance DISTANCE)
 (PlayerOrientation ORIENTATION)
 
+(GoalDistance DISTANCE)
+(GoalAngle ORIENTATION)
+
 (SuggestedLinearSpeed LINEARSPEED)
 (SuggestedAngularSpeed ANGULARSPEED)
 
@@ -29,3 +32,4 @@
 (ProposedSpeedModule LINEARSPEED)
 
 (StateElapsed ELAPSEDTIME)
+(GoalAge ELAPSEDTIME)

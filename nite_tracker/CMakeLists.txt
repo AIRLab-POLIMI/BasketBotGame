@@ -123,17 +123,16 @@ ${opentld_test_INCLUDE_DIRS}
 ## Declare a cpp library
  add_library(nite_tracker
    src/NiteTracker.cpp
-   src/face_detector.cpp
  )
 
 add_library(nite_tracker_nodelet
  src/NiteTrackerNodelet.cpp
-
 )
 
 ## Declare a cpp executable
- add_executable(nite_tracker_node src/main.cpp)
-add_executable(face_recognition_standalone src/face_recognition_standalone.cpp)
+add_executable(nite_tracker_node src/main.cpp)
+add_executable(face_detector_filter src/face_detector_filter.cpp)
+add_executable(face_recognition_standalone src/face_recognition_standalone.cpp src/face_detector.cpp)
 add_executable(face_detector_cam src/face_detector_cam.cpp src/face_detector.cpp    src/opentld_face_detector.cpp
 )
 
@@ -143,9 +142,10 @@ add_executable(face_detector_cam src/face_detector_cam.cpp src/face_detector.cpp
 # add_dependencies(nite_tracker_node nite_tracker_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(nite_tracker_node nite_tracker ${catkin_LIBRARIES})
-target_link_libraries(nite_tracker_nodelet nite_tracker ${catkin_LIBRARIES})
-target_link_libraries(face_recognition_standalone nite_tracker ${catkin_LIBRARIES})
+target_link_libraries(nite_tracker_node nite_tracker ${catkin_LIBRARIES} )
+target_link_libraries(nite_tracker_nodelet nite_tracker  ${catkin_LIBRARIES})
+target_link_libraries(face_recognition_standalone   ${catkin_LIBRARIES})
+target_link_libraries(face_detector_filter ${PCL_LIBRARIES} ${catkin_LIBRARIES})
  target_link_libraries(nite_tracker
    ${OpenNI2_LIBRARIES} ${Nite2_LIBRARY} ${OpenCV_LIBRARIES}
  )

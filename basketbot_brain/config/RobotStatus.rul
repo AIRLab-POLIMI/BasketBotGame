@@ -2,19 +2,18 @@
 
 
 
-#(AND (AND (Normal) (NOT(PlayerVisible)) ) (PlayerLeft)) => (RobotStatus SEARCH_LEFT);
-#(AND (AND (Normal) (NOT(PlayerVisible))  ) (PlayerRight)) => (RobotStatus SEARCH_RIGHT);
+(AND (AND (Normal) (NOT(PlayerVisible)) ) (RobotRotatingLeft)) => (RobotStatus SEARCH_LEFT);
+(AND (AND (Normal) (NOT(PlayerVisible))  ) (RobotRotatingRight)) => (RobotStatus SEARCH_RIGHT);
+
+
+
 #(AND (AND (Normal) (NOT(PlayerVisible))  )  (RobotRotatingLeft)) => (RobotStatus SEARCH_LEFT);
 #(AND (AND (Normal) (NOT(PlayerVisible))  )  (RobotRotatingRight)) => (RobotStatus SEARCH_RIGHT);
-(AND (Normal) (NOT(PlayerVisible))) => (RobotStatus EXPLORE);
-
+#(AND (Normal) (NOT(PlayerVisible))) => (RobotStatus SEARCH_LEFT)(RobotStatus SEARCH_RIGHT);
+#(AND (Normal) (NOT(PlayerVisible)) ) =>(RobotStatus EXPLORE);
 
 (AND (Frozen) (ElapsedOne)) => (RobotStatus EXPLORE);
 
-(AND (NOT(PlayerVisible))
-(AND (ElapsedOne)
- (OR (SearchLeft) (SearchRight))
-)) => (RobotStatus EXPLORE);
 
-(AND (PlayerVisible) 
-  (OR (Exploring) (OR (SearchLeft) (SearchRight)))) => (RobotStatus NORMAL);
+
+(AND (NOT (Normal)) (PlayerVisible))  => (&DEL.RobotStatus ANY) (RobotStatus NORMAL);

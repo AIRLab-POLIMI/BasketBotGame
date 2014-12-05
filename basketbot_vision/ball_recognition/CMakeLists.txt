@@ -6,7 +6,9 @@ project(ball_recognition)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED sensor_msgs pcl_conversions
 roscpp
-std_msgs)
+std_msgs
+sensor_msgs image_transport
+image_geometry cv_bridge)
 
 
 find_package(PCL 1.2 REQUIRED)
