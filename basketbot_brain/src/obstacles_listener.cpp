@@ -7,6 +7,8 @@
 void ObstaclesListener::mapCallback(nav_msgs::OccupancyGrid::ConstPtr ptr)
 {
 	currentMap = ptr;
+	nav_msgs::OccupancyGrid::Ptr newMap(new nav_msgs::OccupancyGrid(*ptr));
+	std::swap (debugMap,newMap);
 	std::cerr<<"new map"<<std::endl;
 }
 
@@ -35,12 +37,17 @@ char ObstaclesListener::getMapCost(float x,float y)
 	unsigned int cellnum = currentMap->info.width * (int) robotYmap + (int)robotXmap;
 	char prob = currentMap->data[cellnum];
 	
-	nav_msgs::OccupancyGrid::Ptr newMap(new nav_msgs::OccupancyGrid(*currentMap));
+
 	if(prob > 50)
-		newMap->data[cellnum] = 0;
+		debugMap->data[cellnum] = 0;
 	else
-		newMap->data[cellnum] = 100;
-	mapPublisher.publish(newMap);
+		debugMap->data[cellnum] = 100;
+		if((ros::Time::now()-lastPublish).toSec() > 2.0)
+		{
+			mapPublisher.publish(debugMap);
+			lastPublish = ros::Time::now();
+		}
+	
 	
 	return prob;
 
@@ -63,7 +70,7 @@ char ObstaclesListener::rayTrace(float angle, float maxDistance)
 std::pair <unsigned int,unsigned int> ObstaclesListener::localToCostmapCoordinates(float x,float y)
 {
 	tf::StampedTransform transform;
-	listener.lookupTransform("/odom", "/base_footprint",ros::Time(0), transform);
+	listener.lookupTransform("/map", "/base_footprint",ros::Time(0), transform);
 
 	tf::Pose mapPose;
 	geometry_msgs::Pose mapOrigin= currentMap->info.origin;

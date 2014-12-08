@@ -125,10 +125,10 @@ void playerEKF::makeQ()
 
 void playerEKF::makeR()
 {
-	R(1,1) = 10;
+	R(1,1) = 1;
 	R(1,2) = 0.0;
 	R(2,1) = 0.0;
-	R(2,2) = 10;
+	R(2,2) = 1;
 }
 
 void playerEKF::makeV()

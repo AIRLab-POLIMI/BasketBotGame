@@ -112,7 +112,7 @@ BasketBotBrain::BasketBotBrain(RosBrianBridge *messenger,std::string config_path
 {
 	orientationOffset = 0;
 	distanceOffset = 1;
-	distanceSensitivity = 0.2 ;
+	distanceSensitivity = 0.5 ;
 	playerSpeedSensitivity = 0.2;
 	reverseRotationThreshold = 0.5;
 	outputSnappiness = 0;

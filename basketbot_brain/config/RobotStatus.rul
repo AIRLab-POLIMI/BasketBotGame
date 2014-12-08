@@ -2,8 +2,8 @@
 
 
 
-(AND (AND (Normal) (NOT(PlayerVisible)) ) (RobotRotatingLeft)) => (RobotStatus SEARCH_LEFT);
-(AND (AND (Normal) (NOT(PlayerVisible))  ) (RobotRotatingRight)) => (RobotStatus SEARCH_RIGHT);
+(AND (AND (Normal) (NOT(PlayerVisible)) ) (RobotRotatingLeft)) => (RobotStatus SEARCH_RIGHT);
+(AND (AND (Normal) (NOT(PlayerVisible))  ) (RobotRotatingRight)) => (RobotStatus SEARCH_LEFT);
 
 
 

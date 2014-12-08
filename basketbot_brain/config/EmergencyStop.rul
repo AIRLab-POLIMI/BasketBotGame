@@ -1,0 +1,2 @@
+(RobotMovingForwardTooFast) => (&DEL.SpeedModule ANY) (SpeedModule BACKWARD_VERY_SLOW);
+(RobotMovingBackwardTooFast) => (&DEL.SpeedModule ANY) (SpeedModule FORWARD_VERY_SLOW);

@@ -24,7 +24,7 @@ void RosBrianBridge::setSpeed(float v, float rot)
 
 
 	//limit values
-	float maxV = maxSpeeds,maxR = 2.0*maxSpeeds;
+	float maxV = maxSpeeds,maxR = 3.0*maxSpeeds;
 	v *= maxV;
 	rot*= maxR;
 	v=std::min(std::max(v,-maxV),maxV);
@@ -71,7 +71,7 @@ void RosBrianBridge::desiredCmdVelJoyCallback(const r2p::Velocity::ConstPtr& msg
 {
 	float r = msg->w / 10.0;
 	float v = msg->x;
-	if(r!=suggestedAngularSpeed || v != suggestedLinearSpeed)
+	if(r!=suggestedAngularSpeed || v != suggestedLinearSpeed || suggestedAngularSpeed > 2 || suggestedLinearSpeed > 0.2)
 		last_joy_suggestion = ros::Time::now();
 	suggestedLinearSpeed=v;
 	suggestedAngularSpeed=r;

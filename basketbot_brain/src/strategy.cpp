@@ -21,7 +21,7 @@ void Strategy::setState(StrategyState newState)
 	StrategyState oldState = strategyState;
 	strategyState = newState;
 	if(oldState == STAY_AWAY) {
-		brain->setParameter("distanceOffset",1.0);
+		brain->setParameter("distanceOffset",1.5);
 	}
 	if(oldState == TILT_LEFT || oldState == TILT_RIGHT) {
 		brain->setParameter("orientationOffset",0);
@@ -35,7 +35,7 @@ void Strategy::setState(StrategyState newState)
 		brain->setParameter("orientationOffset",-0.2);
 	}
 	if(newState ==STAY_AWAY) {
-		brain->setParameter("distanceOffset",3.0);
+		//brain->setParameter("distanceOffset",3.0);
 	}
 	lastUpdate = ros::Time::now();
 }
