@@ -1,3 +1,4 @@
 ( SpeedModule SPEEDMODULE )
 (RotSpeed ROTSPEED)
 (RobotStatus ROBOTSTATUS)
+(ObstacleDanger BOOL)

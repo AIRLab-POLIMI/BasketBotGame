@@ -24,7 +24,7 @@ void RosBrianBridge::setSpeed(float v, float rot)
 
 
 	//limit values
-	float maxV = maxSpeeds,maxR = 3.0*maxSpeeds;
+	float maxV = 3.0*maxSpeeds,maxR = 4.0*maxSpeeds;
 	v *= maxV;
 	rot*= maxR;
 	v=std::min(std::max(v,-maxV),maxV);
@@ -52,7 +52,7 @@ void RosBrianBridge::odomCallback(const nav_msgs::Odometry::ConstPtr & msg)
 
 }
 
-RosBrianBridge::RosBrianBridge():brain(this,brian_config_path)
+RosBrianBridge::RosBrianBridge():brain(this,brian_config_path),strategy(&brain,this),obstaclesListener()
 {
 	predictionSubscriber = node.subscribe("PosPrediction", 2, &RosBrianBridge::predictionCallback,this);
 	commandsPublisher = node.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
@@ -116,13 +116,13 @@ void RosBrianBridge::spin()
 	}
 }
 
-std::vector<float> RosBrianBridge::getObstacles()
+std::vector<float> RosBrianBridge::getObstacles(float distance)
 {
 	const double angleStep =  boost::math::constants::pi<double>()/4.0;
 	std::vector<float> result;
 	for(int i = 0; i<8; i++) {
 		double currentAngle = angleStep*i;
-		float cost = obstaclesListener.rayTrace(currentAngle,1.0);
+		float cost = obstaclesListener.rayTrace(currentAngle,distance);
 		result.push_back(cost);
 	}
 	return result;

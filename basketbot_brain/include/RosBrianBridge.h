@@ -39,6 +39,7 @@ public:
 	
 	static float maxSpeeds;
 	BasketBotBrain brain;
+	Strategy strategy;
 	ObstaclesListener obstaclesListener;
 	void predictionCallback(const player_tracker::PosPrediction::ConstPtr& msg);
 	void desiredCmdVelKeyCallback(const geometry_msgs::Twist::ConstPtr& msg);
@@ -73,7 +74,7 @@ public:
 	float getSuggestedAngularSpeed();
 	BiFloat getRobotSpeed();
 	Goal getGoal();
-	std::vector<float> getObstacles();
+	std::vector<float> getObstacles(float distance);
 	RosBrianBridge();
 	~RosBrianBridge() {}
 };

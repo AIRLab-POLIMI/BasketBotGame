@@ -3,53 +3,16 @@
 #include <actionlib_msgs/GoalStatusArray.h>
 #include <signal.h>
 #include <sys/wait.h>
-
+#include <image_transport/image_transport.h>
 #include <stdio.h>
-
-
-int run_as_watchdog()
+ros::Time imageTime;
+void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
-	while(1) {
-		ros::Time startTime = ros::Time::now();
-
-		int pid  = fork() ;
-		if(pid < 0)
-			exit(2);
-		if(pid == 0) {
-
-			execlp("rosnode","rosnode", "ping", "/camera/driver",NULL);
-			exit(1);
-		}
-		wait(NULL);
-		ros::Duration elapsed = ros::Time::now() - startTime;
-		std::cerr<<"passati: "<<elapsed.toSec()<<std::endl;
-		if(elapsed.toSec() > 1.0) {
-			std::cerr<<"nodo crashato"<<std::endl;
-			kill(getppid(),SIGINT);
-			return 0;
-		}
-		if(!ros::ok())
-			return 0;
-	}
+	imageTime = ros::Time::now();
 }
 
-int run_as_launcher(char * launchname)
-{
-	while(1) {
-		int pid  = fork() ;
-		if(pid < 0)
-			exit(2);
-		if(pid == 0) {
-			char * const args[] = {};
-			execlp("roslaunch","roslaunch","basketbot_launch", launchname,"use_watchdog:=true",NULL);
-			exit(1);
-		}
-		wait(NULL);
-		if(!ros::ok())
-			return 0;
-	}
 
-}
+
 int launch(char ** argv)
 {
 	int pid  = fork();
@@ -77,16 +40,7 @@ int watchdog()
 	}
 	return pid;
 }
-int main2(int argc, char **argv)
-{
-	ros::init(argc, argv, "face_recognition_watchdog");
-	ros::NodeHandle nh;
-	std::cerr << argc<<std::endl;
-	if(argc > 1)
-		return run_as_launcher(argv[1]);
-	else
-		return run_as_watchdog();
-}
+
 
 
 int main(int argc, char **argv)
@@ -98,6 +52,11 @@ int main(int argc, char **argv)
 		return 0;
 	ros::Time startTime;
 	int launch_pid = 0,watchdog_pid = 0;
+
+	image_transport::ImageTransport it(nh);
+
+	image_transport::Subscriber sub = it.subscribe("/camera/depth/image_raw", 1, imageCallback);
+
 	while(1) {
 		if(!launch_pid)
 			launch_pid = launch(argv +1 );
@@ -105,19 +64,27 @@ int main(int argc, char **argv)
 			watchdog_pid = watchdog();
 			startTime = ros::Time::now();
 		}
-		int dead_pid = wait(NULL);
+		
+		int dead_pid = waitpid(-1,NULL,WNOHANG);
 		ros::spinOnce();
 		if(!ros::ok())
 			break;
+		
 		if(dead_pid == launch_pid) {
 			launch_pid = 0;
-		}
-		if(dead_pid == watchdog_pid) {
+		} else if(dead_pid == watchdog_pid) {
 			watchdog_pid = 0;
 			ros::Duration elapsed = ros::Time::now() - startTime;
 			std::cerr<<"passati: "<<elapsed.toSec()<<std::endl;
-			if(elapsed.toSec() > 1.0 && launch_pid > 0) 
+			if(elapsed.toSec() > 1.0 && launch_pid > 0)
 				kill(launch_pid,SIGTERM);
+		} else {
+			ros::Duration elapsed = ros::Time::now() - startTime;
+			ros::Duration lastImage = ros::Time::now() - imageTime;
+			if(elapsed.toSec()>15.0 && lastImage.toSec() > 5.0)
+				kill(launch_pid,SIGTERM);
+			else
+				ros::Duration(0.5).sleep();
 		}
 
 

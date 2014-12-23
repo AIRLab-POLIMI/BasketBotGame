@@ -4,7 +4,7 @@ project(player_tracker)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED  COMPONENTS roscpp tf message_generation PCL)
+find_package(catkin REQUIRED  COMPONENTS roscpp tf message_generation PCL image_transport)
 find_package( PCL REQUIRED )
 
 ## System dependencies are found with CMake's conventions

@@ -15,7 +15,7 @@ private:
 	RosBrianBridge *messenger;
 	BrianWrapper brian;
 	BrianWrapper::DataContainer input, output;
-	Strategy strategy;
+
 	void runBrian();
 	float applyShape(float,float);
 	void checkUnreliability();
@@ -36,6 +36,7 @@ private:
 	float rotationCommandSensitivity;
 
 	float playerSpeedSensitivity;
+	float obstaclesRadarDistance;
 	float reverseRotationThreshold;
 	float playerNotVisibleThreshold;
 	float playerLostThreshold;
@@ -53,6 +54,8 @@ public:
 	void rotateAndSearch(float direction);
 	void setParameter(std::string, float);
 	float getCurrentStateElapsed();
+	float getParameter(std::string name);
+	bool dangerCollision();
 };
 
 #endif

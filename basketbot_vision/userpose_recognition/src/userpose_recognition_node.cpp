@@ -81,6 +81,10 @@ UserposeRecognitionNode::UserposeRecognitionNode():nh(),pnh("~")
 	userPosePublisher = nh.advertise<userpose_recognition::UserPose>("UserPose",10);
 	currentPlayer=0;
 	posPredictionSubscriber = nh.subscribe("PosPrediction", 2, &UserposeRecognitionNode::posPredictionCallback,this);
+	
+	bool nogui= false;
+	ros::param::param<bool>("~nogui", nogui,false);
+	if(!nogui)
 	userPoseDisplay.init();
 
 }

@@ -6,22 +6,27 @@
 #include <tf/transform_broadcaster.h>
 void ObstaclesListener::mapCallback(nav_msgs::OccupancyGrid::ConstPtr ptr)
 {
+	
 	currentMap = ptr;
 	nav_msgs::OccupancyGrid::Ptr newMap(new nav_msgs::OccupancyGrid(*ptr));
 	std::swap (debugMap,newMap);
 	std::cerr<<"new map"<<std::endl;
+	map_frame = ptr->header.frame_id;
+	ready = true;
 }
 
 ObstaclesListener::ObstaclesListener()
 {
 	mapSubscriber =nh.subscribe("/costmap_node/costmap/costmap", 2,&ObstaclesListener::mapCallback,this);
 	mapPublisher = nh.advertise<nav_msgs::OccupancyGrid>("debugMap", 50);
+	ready = false;
+	std::cerr<<"init obs listener map" <<std::endl;
 }
 
 char ObstaclesListener::getMapCost(float x,float y)
 {
 	std::pair <unsigned int,unsigned int> coords;
-	if(!currentMap)
+	if(!currentMap || !ready)
 		return 0;
 	try
 	{
@@ -53,24 +58,27 @@ char ObstaclesListener::getMapCost(float x,float y)
 
 }
 
-char ObstaclesListener::rayTrace(float angle, float maxDistance)
+float ObstaclesListener::rayTrace(float angle, float maxDistance)
 {
-	char maxCost = 0;
-	float distances[] = {1.0,0.6,0.8};
+	float maxCost = 0;
+	float distances[] = {0.6,0.8,1.0,1.2};
 	
 	for(int i = 0;i<sizeof(distances)/sizeof(distances[0]); i++ )
 	{
 		float targetX = std::cos(angle) * distances[i] * maxDistance;
 		float targetY = std::sin(angle) * distances[i] * maxDistance;
 		char currentCost = getMapCost(targetX,targetY);
-		maxCost = std::max(maxCost,currentCost);
+		if(distances[i] > 1.01)
+			currentCost *=0.25;
+		maxCost = std::max(1.0f*maxCost,1.0f*currentCost);
 	}
 	return maxCost;
 }
 std::pair <unsigned int,unsigned int> ObstaclesListener::localToCostmapCoordinates(float x,float y)
 {
+	//potevo benissimo leggerli al contrario ed evitare l'inversa? o non fa differenza?
 	tf::StampedTransform transform;
-	listener.lookupTransform("/map", "/base_footprint",ros::Time(0), transform);
+	listener.lookupTransform(map_frame, "/base_footprint",ros::Time(0), transform);
 
 	tf::Pose mapPose;
 	geometry_msgs::Pose mapOrigin= currentMap->info.origin;

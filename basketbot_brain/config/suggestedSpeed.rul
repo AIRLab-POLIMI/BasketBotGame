@@ -4,5 +4,7 @@
 (SuggestedLeft) => (RotSpeed LEFT);
 (SuggestedRight) => (RotSpeed RIGHT);
 (SuggestedAngularSteady) => (RotSpeed STEADY);
+
+(NOT (OR (SuggestedForward) (SuggestedBackward) )) => (SpeedModule STEADY);
 (SuggestedForward) => (SpeedModule FORWARD);
 (SuggestedBackward) => (SpeedModule REVERSE);

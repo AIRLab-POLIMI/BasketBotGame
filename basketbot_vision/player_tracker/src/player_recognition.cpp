@@ -143,7 +143,7 @@ float PlayerTracker::calculateScore(unsigned int playerID)
 
 	float speed = calculateSpeed(playerID);
 
-	float speedScore = 1.0 * applySlope(speed,0.2,0.3);
+	float speedScore = 1.5 * applySlope(speed,0.2,0.3);
 	if(playerID <= MAX_ID)
 		 speedScore += 0.5;
 	

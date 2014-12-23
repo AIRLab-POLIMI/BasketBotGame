@@ -109,6 +109,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 	src/basketbot_brain.cpp
 	src/obstacles_listener.cpp
 	src/strategy.cpp
+	src/time_throttle.cpp
 )
 
 ## Add cmake target dependencies of the executable/library
