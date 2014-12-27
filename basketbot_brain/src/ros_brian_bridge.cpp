@@ -2,7 +2,6 @@
 
 #include <ros/package.h>
 #include "RosBrianBridge.h"
-#include <boost/math/constants/constants.hpp>
 
 std::string brian_config_path = ros::package::getPath("basketbot_brain") + "/config";
 
@@ -118,14 +117,8 @@ void RosBrianBridge::spin()
 
 std::vector<float> RosBrianBridge::getObstacles(float distance)
 {
-	const double angleStep =  boost::math::constants::pi<double>()/4.0;
-	std::vector<float> result;
-	for(int i = 0; i<8; i++) {
-		double currentAngle = angleStep*i;
-		float cost = obstaclesListener.rayTrace(currentAngle,distance);
-		result.push_back(cost);
-	}
-	return result;
+	return obstaclesListener.getObstaclesArray(distance);
+	
 }
 
 float RosBrianBridge::getPlayerDistance()

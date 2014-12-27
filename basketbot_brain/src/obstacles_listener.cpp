@@ -4,6 +4,9 @@
 #include <iostream>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
+#include <boost/math/constants/constants.hpp>
+#include <sensor_msgs/LaserScan.h>
+
 void ObstaclesListener::mapCallback(nav_msgs::OccupancyGrid::ConstPtr ptr)
 {
 	
@@ -19,10 +22,44 @@ ObstaclesListener::ObstaclesListener()
 {
 	mapSubscriber =nh.subscribe("/costmap_node/costmap/costmap", 2,&ObstaclesListener::mapCallback,this);
 	mapPublisher = nh.advertise<nav_msgs::OccupancyGrid>("debugMap", 50);
+	debugLaserPublisher = nh.advertise<sensor_msgs::LaserScan>("debugLaser", 2);
 	ready = false;
 	std::cerr<<"init obs listener map" <<std::endl;
 }
-
+std::vector<float> ObstaclesListener::getObstaclesArray(float distance)
+{
+	const double angleStep =  boost::math::constants::pi<double>()/4.0;
+	std::vector<float> result;
+	for(int i = 0; i<8; i++) {
+		double currentAngle = angleStep*i;
+		float cost = rayTrace(currentAngle,distance);
+		result.push_back(cost);
+	}
+	
+	sensor_msgs::LaserScan debugLaser;
+	debugLaser.header.stamp = ros::Time::now();
+	debugLaser.header.frame_id="base_stabilized";
+	debugLaser.angle_min = 0;
+	debugLaser.angle_max = 7.0*angleStep;
+	debugLaser.angle_increment = angleStep;
+	debugLaser.time_increment = 0.001;
+	debugLaser.scan_time = 0.03;
+	debugLaser.range_min = 0;
+	debugLaser.range_max = 10.0;
+	debugLaser.ranges.resize(8);
+	debugLaser.intensities.resize(8);
+	for(int i =0; i < 8;i++)
+	{
+		int lindex = i;
+		debugLaser.ranges[i] = 1.0;
+		debugLaser.intensities[i] = result[i];
+		
+	}
+	debugLaserPublisher.publish(debugLaser);
+	
+	
+	return result;
+}
 char ObstaclesListener::getMapCost(float x,float y)
 {
 	std::pair <unsigned int,unsigned int> coords;

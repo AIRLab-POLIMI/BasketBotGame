@@ -22,7 +22,7 @@ class Strategy
 	ros::Time lastUpdate;
 	TimeThrottle timeThrottle;
 
-
+    bool userJustAppeared;
 	bool playerSlow;
 	bool userSeenAtLeastOnce;
 	std::list<geometry_msgs::PointStamped> lastPlayerPositions;
@@ -35,7 +35,7 @@ class Strategy
 
 
 	void setBrianParameter(std::string name, float value);
-	void timerCallback(const ros::TimerEvent&);
+	void strategyLoop(const ros::TimerEvent&);
 	void publishGoalAbsolute(float x,float y);
 	void publishGoalRelative(float x,float y);
 	void predictionCallback(const player_tracker::PosPrediction::ConstPtr& msg);

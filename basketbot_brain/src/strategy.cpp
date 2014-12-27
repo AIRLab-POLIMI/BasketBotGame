@@ -17,7 +17,7 @@ Strategy::Strategy(BasketBotBrain* brain,RosBrianBridge* bridge) :brain(brain),b
 	goalPublisher = nh.advertise<geometry_msgs::PoseStamped >("/brain/goal",10);
 	predictionSubscriber = nh.subscribe("PosPrediction", 2, &Strategy::predictionCallback,this);
 
-	timer = nh.createTimer(ros::Duration(1.0/10.0), &Strategy::timerCallback,this);
+	timer = nh.createTimer(ros::Duration(1.0/10.0), &Strategy::strategyLoop,this);
 	srand(time(NULL));
 	brain->setParameter("distanceOffset",defaultDistanceOffset);
 	brain->setParameter("distanceSensitivity",defaultDistanceSensitivity);
@@ -90,7 +90,8 @@ void Strategy::predictionCallback(const player_tracker::PosPrediction::ConstPtr&
 	lastPrediction = *msg;
 	float speedSquared = msg->velocity.x*msg->velocity.x + msg->velocity.y*msg->velocity.y;
 	float speed = sqrt(speedSquared);
-
+	
+	processEvent("user_position",0.0);
 
 
 
@@ -168,6 +169,11 @@ void  Strategy::analyzeBrianState()
 			setStrategyState(LAST_POSITION);
 
 			break;
+		case FROZEN:
+			processEvent("freeze",1.0);
+
+
+			break;
 
 		default:
 			setStrategyState(NONE);
@@ -232,6 +238,15 @@ bool Strategy::isEventRelevant(std::string eventName, float eventSize)
 		if(!timeThrottle.checkElapsedNamed(eventName,4.0))
 			return false;
 		return true;
+	} else if(eventName == "freeze") {
+		return true;
+	} else if(eventName == "user_position") {
+		if(userJustAppeared)
+
+			return true;
+		
+		else
+			return false;
 	} else {
 		ROS_FATAL_STREAM("unrecognized event");
 		exit(0);
@@ -281,9 +296,16 @@ void  Strategy::processEvent(std::string eventName, float eventSize)
 
 		//
 	} else if(eventName == "user_visible") {
+		userJustAppeared = true;
 		ROS_INFO_STREAM("EVENT: "<<eventName<<" "<<eventSize<<"    y: "<<lastPredictionWhenDisappeared.velocity.y);
+	} else if(eventName == "user_position") { //triggered after user_visible
+			userJustAppeared = false;
+		ROS_INFO_STREAM("EVENT: "<<eventName);
 	} else if(eventName == "user_lost") {
 		ROS_INFO_STREAM("EVENT: "<<eventName<<"\t"<<eventSize<<"  "<<lastPrediction.position.y);
+		
+	} else if(eventName == "freeze") {
+		ROS_INFO_STREAM("robot frozen");
 	} else if(eventName == "danger_collision") {
 
 		float obsRange = brain->getParameter("obstaclesRadarDistance");
@@ -364,26 +386,30 @@ void Strategy::applyStrategy()
 		if( elapsedFromStrategyChange()> 0.5 && !slow) {
 			ROS_INFO_STREAM("Ehi, Wait!");
 			setStrategyState(NONE);
-		} else if(elapsedFromStrategyChange()>4.0)
+		} else if(elapsedFromStrategyChange()>4.0) {
 			ROS_INFO_STREAM("I'm bored too");
-		setStrategyState(NONE);
+			setStrategyState(NONE);
+
+		}
 		break;
 	case TILT_LEFT:
 		if( elapsedFromStrategyChange()> 0.5 && !slow)
 			setStrategyState(NONE);
 		else if(elapsedFromStrategyChange()>2.0 && slow)
 			setStrategyState(TILT_RIGHT);
+		
 		break;
 	case TILT_RIGHT:
 		if( elapsedFromStrategyChange()> 0.5 && !slow)
 			setStrategyState(NONE);
+		else if(elapsedFromStrategyChange()>1.0 && rand()%10 == 0)
+			setStrategyState(NONE);
 		else if(elapsedFromStrategyChange()>2.0 && slow)
 			setStrategyState(TILT_LEFT);
+		
 		break;
 
 	case LAST_POSITION:
-
-
 		if((ros::Time::now() - lastPlayerPos.header.stamp).toSec() < 10.0) {
 			publishGoalAbsolute(lastPlayerPos.point.x,lastPlayerPos.point.y);
 			std::cerr<<"X: "<<lastPlayerPos.point.x<<"   Y:  "<<lastPlayerPos.point.y<<std::endl;
@@ -415,7 +441,7 @@ void Strategy::printDebugInfo()
 		std::cerr<<"SS: "<<strategyState<<std::endl;
 }
 
-void  Strategy::timerCallback(const ros::TimerEvent&)
+void  Strategy::strategyLoop(const ros::TimerEvent&)
 {
 
 	analyzeBrianState();
