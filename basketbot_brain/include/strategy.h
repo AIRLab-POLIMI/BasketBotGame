@@ -6,45 +6,60 @@ class BasketBotBrain;
 class RosBrianBridge;
 
 #include "time_throttle.h"
+#include "HotSpots.h"
+#include "strategy_math.h"
 class Strategy
 {
-	enum StrategyState {NONE,LAST_POSITION,STAY_AWAY,TILT_LEFT,TILT_RIGHT,RANDOM};
+	//roba della strategia
+	enum StrategyState {NONE,LAST_POSITION,STAY_AWAY,TILT_LEFT,TILT_RIGHT,RANDOM,PREVIOUS_STATE,GUESSED_POSITION,LATERALE_1,LATERALE_2};
 	ros::NodeHandle nh;
+	ros::NodeHandle pnh;
 	ros::Timer timer;
 	BasketBotBrain* brain;
 	RosBrianBridge* bridge;
 	BrainState brainState;
 	BrainState previousBrainState;
 	StrategyState strategyState;
+	StrategyState oldStrategyState;
 	tf::TransformListener transformListener;
 	ros::Publisher goalPublisher;
 	ros::Subscriber predictionSubscriber;
 	ros::Time lastUpdate;
 	TimeThrottle timeThrottle;
 
-    bool userJustAppeared;
+	//stato utente, robot
+	bool userJustAppeared;
 	bool playerSlow;
 	bool userSeenAtLeastOnce;
 	std::list<geometry_msgs::PointStamped> lastPlayerPositions;
 	geometry_msgs::PointStamped lastPlayerPos;
 	std::list<float> lastDistances;
 	std::list<float> lastSpeeds;
+	std::list<float> lastOrientations;
+	std::list<float> lastXorientations;
+	std::list<float> lastRobotRotSpeeds;
 	ros::Time timeUserSeenChange;
 	player_tracker::PosPrediction lastPrediction;
 	player_tracker::PosPrediction lastPredictionWhenDisappeared;
 
+	//metodi utili
+	bool addAndCheckDataPoint(float,std::list<float> &,unsigned int);
 
+	bool isPlayerSlow();
+
+	
+	HotSpots hotSpotsReturningVisible;
+	
 	void setBrianParameter(std::string name, float value);
 	void strategyLoop(const ros::TimerEvent&);
 	void publishGoalAbsolute(float x,float y);
 	void publishGoalRelative(float x,float y);
 	void predictionCallback(const player_tracker::PosPrediction::ConstPtr& msg);
 	void setStrategyState(StrategyState);
-	float calcAverage(std::list<float> &);
-	bool isPlayerSlow();
 	float elapsedFromStrategyChange();
 	void  analyzeBrianState();
 	void  analyzeUser();
+	void  analyzeRobot();
 	void  processEvent(std::string eventName, float eventSize);
 	bool isEventRelevant(std::string eventName, float eventSize);
 	void applyStrategy();

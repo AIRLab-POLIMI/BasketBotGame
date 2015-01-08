@@ -1,4 +1,3 @@
-(Frozen) =>  (&DEL.SpeedModule ANY)  (&DEL.RotSpeed ANY) ;
 
 
 
@@ -12,8 +11,10 @@
 #(AND (Normal) (NOT(PlayerVisible))) => (RobotStatus SEARCH_LEFT)(RobotStatus SEARCH_RIGHT);
 #(AND (Normal) (NOT(PlayerVisible)) ) =>(RobotStatus EXPLORE);
 
-(AND (Frozen) (ElapsedOne)) => (RobotStatus EXPLORE);
+(AND (NOT (ElapsedOne) ) (AND (Frozen) (PlayerVisible) ) ) =>  (&DEL.SpeedModule ANY)  (&DEL.RotSpeed ANY) ;
+(AND (Frozen) (NOT (PlayerVisible)))  => (RobotStatus EXPLORE);
+( AND ( AND (Frozen) (PlayerVisible)) (ElapsedOne)) => (RobotStatus NORMAL); 
 
 
 
-(AND (NOT (Normal)) (PlayerVisible))  => (&DEL.RobotStatus ANY) (RobotStatus NORMAL);
+(AND (NOT (Frozen)) (AND (NOT (Normal)) (PlayerVisible)) ) => (&DEL.RobotStatus ANY) (RobotStatus NORMAL);
