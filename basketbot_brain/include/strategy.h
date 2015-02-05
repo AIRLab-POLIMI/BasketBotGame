@@ -8,10 +8,11 @@ class RosBrianBridge;
 #include "time_throttle.h"
 #include "HotSpots.h"
 #include "strategy_math.h"
+#include "strategy_analyzer.h"
 class Strategy
 {
 	//roba della strategia
-	enum StrategyState {NONE,LAST_POSITION,STAY_AWAY,TILT_LEFT,TILT_RIGHT,RANDOM,PREVIOUS_STATE,GUESSED_POSITION,LATERALE_1,LATERALE_2};
+	enum StrategyState {STOPPED,NONE,FREEZE,LAST_POSITION,STAY_AWAY,TILT_LEFT,TILT_RIGHT,RANDOM,PREVIOUS_STATE,THIS_STATE,GUESSED_POSITION,LATERALE_1,LATERALE_2,SCARTO_SINISTRA,SCARTO_DESTRA,AVVICINAMENTO_SINISTRA,AVVICINAMENTO_DESTRA,GIRO_DESTRA};
 	ros::NodeHandle nh;
 	ros::NodeHandle pnh;
 	ros::Timer timer;
@@ -26,19 +27,23 @@ class Strategy
 	ros::Subscriber predictionSubscriber;
 	ros::Time lastUpdate;
 	TimeThrottle timeThrottle;
+	StrategyAnalyzer strategyAnalyzer;
+	
 
 	//stato utente, robot
 	bool userJustAppeared;
 	bool playerSlow;
 	bool userSeenAtLeastOnce;
+	bool canestroDuranteFreeze();
+	bool sguardoFisso;
 	std::list<geometry_msgs::PointStamped> lastPlayerPositions;
 	geometry_msgs::PointStamped lastPlayerPos;
 	std::list<float> lastDistances;
-	std::list<float> lastSpeeds;
 	std::list<float> lastOrientations;
 	std::list<float> lastXorientations;
 	std::list<float> lastRobotRotSpeeds;
 	ros::Time timeUserSeenChange;
+	ros::Time dataUltimoCanestro;
 	player_tracker::PosPrediction lastPrediction;
 	player_tracker::PosPrediction lastPredictionWhenDisappeared;
 
@@ -64,8 +69,10 @@ class Strategy
 	bool isEventRelevant(std::string eventName, float eventSize);
 	void applyStrategy();
 	void printDebugInfo();
+	void start_stop();
 public:
 	Strategy(BasketBotBrain*,RosBrianBridge*);
+	void canestro();
 };
 
 

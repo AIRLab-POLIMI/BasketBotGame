@@ -5,11 +5,13 @@
   </node>    
 
    <node name="basketbot_brain" pkg="basketbot_brain" type="basketbot_brain" output="screen">
-    <param name="default_distance_offset" value="1.5" /> 
+   <rosparam command="load" file="$(find basketbot_launch)/conf/basketbot_brain.conf" />
+
+<!--    <param name="default_distance_offset" value="1.5" /> 
    <param name="default_distance_sensitivity" value="0.5" />    
    <param name="default_obstacles_radar_distance" value="1.0" />
    <param name="min_slow_threshold" value="0.4" />
-   <param name="max_slow_threshold" value="0.5" />
+   <param name="max_slow_threshold" value="0.5" />-->
    </node>
 </group>
 </launch>

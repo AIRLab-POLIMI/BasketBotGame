@@ -20,6 +20,13 @@ std::pair<unsigned int,unsigned int> HotSpots::worldToMatrixPos(float x,float y)
 	return std::pair<unsigned int,unsigned int> (coordX,coordY);
 }
 
+float HotSpots::getDistance(unsigned int,unsigned int)
+{
+	//DAFARE, usare una funzione vera
+	exit(1);
+	
+}
+
 float HotSpots::getDistance(int X1,int Y1,int X2,int Y2)
 {
 	float deltaX = fabs(step*(X1-X2));
@@ -41,7 +48,7 @@ void HotSpots::resetGrid(float X, float Y, float step)
 HotSpots::HotSpots()
 {
 	
-	decayRate=0.95;
+	decayRate=0.5;
 	radius = 1.1;
 	confRadius = 1.0;
 
@@ -52,11 +59,11 @@ HotSpots::HotSpots()
 }
 void HotSpots::debugPrint()
 {
-	for(int i = 0; i<scores.size(); i++) {
+	/*for(int i = 0; i<scores.size(); i++) {
 		std::cerr <<std::fixed<<scores[i]<<" ";
 		if(i % depth == depth-1)
 			std::cerr<<std::endl;
-	}
+	}*/
 #ifdef DEBUG_HOTSPOTS_MAP
 	nav_msgs::OccupancyGrid::Ptr debugMap(new nav_msgs::OccupancyGrid());
 	debugMap->header.stamp = ros::Time::now();
@@ -130,7 +137,7 @@ void HotSpots::generateBestMatch()
 	for(int y = 0; y < depth; y++)
 		for(int x = 0; x < width; x++) {
 
-			std::cerr <<"dist: "<<getDistance(x,y,bestX,bestY)<<"  score: "<<getScore(x,y)<<std::endl;
+			//std::cerr <<"dist: "<<getDistance(x,y,bestX,bestY)<<"  score: "<<getScore(x,y)<<std::endl;
 			if(getScore(x,y) > best2 && getDistance(x,y,bestX,bestY) >= confRadius) {
 				best2 = getScore(x,y);
 			}
@@ -161,10 +168,10 @@ bool HotSpots::recordPoint(float x, float y, float value)
 	try {
 		coords = worldToMatrixPos(x,y);
 	} catch(...) {
-		ROS_INFO_STREAM("HotSpots: ??: "<<coords.first<<" "<<coords.second);
+		
 		return false;
 	}
-
+ROS_INFO_STREAM("HotSpots: ??: "<<coords.first<<" "<<coords.second);
 	unsigned int pos =  matrixToArrayPos(coords);
 	std::cerr<<"Hotspots X: "<<coords.first<<"  Y:" <<coords.second<<std::endl;
 	for(int i = 0; i<scores.size(); i++)
@@ -172,10 +179,10 @@ bool HotSpots::recordPoint(float x, float y, float value)
 
 	unsigned int radiusInCells = ceil(radius/step);
 
-	unsigned int minX = std::max(coords.first-radiusInCells,0U);
+	unsigned int minX = coords.first > radiusInCells? (coords.first-radiusInCells): 0U;
 	unsigned int maxX = std::min(coords.first+radiusInCells,width-1);
 
-	unsigned int minY = std::max(coords.second-radiusInCells,0U);
+	unsigned int minY = coords.second > radiusInCells? (coords.second-radiusInCells): 0U;
 	unsigned int maxY = std::min(coords.second+radiusInCells,depth-1);
 
 
@@ -183,13 +190,14 @@ bool HotSpots::recordPoint(float x, float y, float value)
 		for(int x = minX; x <= maxX; x++) {
 			std::pair<unsigned int,unsigned int> coords_bis(x,y);
 			float distance = getDistance(coords.first,coords.second,coords_bis.first,coords_bis.second);
+			ROS_INFO_STREAM("Ho"<<distance);
 			if(distance<radius) {
 
 				unsigned int ppp = matrixToArrayPos(coords_bis);
 				float riduzione = cos(distance*3.14/2.0/radius);
 				scores[ppp] += value*riduzione;
 
-				std::cerr << "X: "<<x<<"   Y: "<<y<<"  D: "<< distance<<std::endl;
+				//std::cerr << "X: "<<x<<"   Y: "<<y<<"  D: "<< distance<<std::endl;
 			}
 		}
 

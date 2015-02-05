@@ -34,6 +34,7 @@ public:
 	ros::Subscriber suggestedCmdVelJoy;
 	ros::Subscriber odomSubscriber;
 	ros::Subscriber goalSubscriber;
+	ros::Subscriber canestroSubscriber;
 	tf::TransformListener transformListener;
 	
 	
@@ -46,6 +47,7 @@ public:
 	void desiredCmdVelJoyCallback(const r2p::Velocity::ConstPtr& msg);
 	void userPoseCallback(const userpose_recognition::UserPoseConstPtr &);
 	void odomCallback(const nav_msgs::Odometry::ConstPtr &);
+	void canestroCallback(const std_msgs::Empty::ConstPtr &);
 	void goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 	ros::Time last_joy_suggestion;
 	

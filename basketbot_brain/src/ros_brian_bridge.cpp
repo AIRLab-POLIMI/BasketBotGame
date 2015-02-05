@@ -2,7 +2,7 @@
 
 #include <ros/package.h>
 #include "RosBrianBridge.h"
-
+#include <std_msgs/Empty.h>
 std::string brian_config_path = ros::package::getPath("basketbot_brain") + "/config";
 
 float RosBrianBridge::maxSpeeds = 0.25;
@@ -23,7 +23,7 @@ void RosBrianBridge::setSpeed(float v, float rot)
 
 
 	//limit values
-	float maxV = 3.0*maxSpeeds,maxR = 4.0*maxSpeeds;
+	float maxV = 3.0*maxSpeeds,maxR = 3.0*maxSpeeds;
 	v *= maxV;
 	rot*= maxR;
 	v=std::min(std::max(v,-maxV),maxV);
@@ -50,7 +50,10 @@ void RosBrianBridge::odomCallback(const nav_msgs::Odometry::ConstPtr & msg)
 	last_odometry_alpha= msg->twist.twist.angular.z;
 
 }
-
+void RosBrianBridge::canestroCallback(const std_msgs::Empty::ConstPtr &)
+{
+	strategy.canestro();
+}
 RosBrianBridge::RosBrianBridge():brain(this,brian_config_path),strategy(&brain,this),obstaclesListener()
 {
 	predictionSubscriber = node.subscribe("PosPrediction", 2, &RosBrianBridge::predictionCallback,this);
@@ -61,6 +64,7 @@ RosBrianBridge::RosBrianBridge():brain(this,brian_config_path),strategy(&brain,t
 	suggestedCmdVelJoy = node.subscribe("/tiltone/velocityD", 2,&RosBrianBridge::desiredCmdVelJoyCallback,this);
 	odomSubscriber = node.subscribe("/odom", 2,&RosBrianBridge::odomCallback,this);
 	goalSubscriber = node.subscribe("goal",2,&RosBrianBridge::goalCallback,this);
+	canestroSubscriber = node.subscribe("/canestro",2,&RosBrianBridge::canestroCallback,this);
 	suggestedLinearSpeed = suggestedAngularSpeed = 0;
 	last_odometry_v = last_odometry_alpha = 0;
 	currentUnreliability = 10000.0;
@@ -101,7 +105,6 @@ void RosBrianBridge::predictionCallback(const player_tracker::PosPrediction::Con
 	predictedVX = vx;
 	predictedVY = vy;
 	currentUnreliability = msg->unreliability;
-	std::cout << "predictionCallback "<<x<<" " << y <<std::endl;
 }
 
 void RosBrianBridge::spin()
@@ -151,7 +154,7 @@ RosBrianBridge::Goal RosBrianBridge::getGoal()
 {
 	Goal result;
 	float age = (ros::Time::now()-goal.header.stamp).toSec();
-	std::cerr<<"age" <<age<<std::endl;
+	
 	if(age > 2)
 		age = -1;
 	result.age = age;

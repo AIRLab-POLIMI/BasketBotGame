@@ -1,5 +1,6 @@
 #include <list>
-
+#ifndef STRATEGY_MATH_H
+#define STRATEGY_MATH_H
 class StrategyMath
 {
 	public:
@@ -8,3 +9,4 @@ class StrategyMath
 	static float avgDistance(std::list<float> & lista,float origin = 0.0f);
 	
 };
+#endif

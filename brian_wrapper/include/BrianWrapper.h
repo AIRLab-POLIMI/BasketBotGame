@@ -25,7 +25,7 @@ private:
 	public:
 	BrianWrapper(std::string configDir,unsigned int verbosity = 0);
 	~BrianWrapper();
-	
+	void setVerbosity(unsigned int);
 	typedef std::map<std::string,SpecialFloat> DataContainer;
 	DataContainer execute(const DataContainer);
 };

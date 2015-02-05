@@ -112,6 +112,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 	src/time_throttle.cpp
         src/HotSpots.cpp
 	src/strategy_math.cpp
+        src/strategy_analyzer.cpp
 )
 
 ## Add cmake target dependencies of the executable/library

@@ -4,31 +4,30 @@
 #include "RosBrianBridge.h"
 
 const unsigned int rate = 30;
-
+bool showBrianDebug = true;
+bool BasketBotBrain::isVisible()
+{
+	return messenger->getPlayerPositionUnreliability()<playerNotVisibleThreshold;
+}
 void BasketBotBrain::checkUnreliability()
 {
 	float newUnreliability = messenger->getPlayerPositionUnreliability();
 	float oldUnreliability = input["Unreliability"];
-	
-	if(newUnreliability < playerNotVisibleThreshold and oldUnreliability > 1.0)
-	{
+
+	if(newUnreliability < playerNotVisibleThreshold and oldUnreliability > 1.0) {
 		input["Unreliability"] = 0.5;
-	}
-	else if(newUnreliability > playerNotVisibleThreshold and oldUnreliability < 1.0)
-	{
+	} else if(newUnreliability > playerNotVisibleThreshold and oldUnreliability < 1.0) {
 		input["Unreliability"] = 1.5;
 		latestPlayerLoss = ros::Time::now();
 		if(currentState == NORMAL)
 			;//rotateAndSearch(-input["PlayerVelocityY"]);
-	}
-	else if(newUnreliability > playerNotVisibleThreshold and (ros::Time::now()-latestPlayerLoss).toSec() > 5.0 
-	and oldUnreliability < 2.0)
-	{
+	} else if(newUnreliability > playerNotVisibleThreshold and (ros::Time::now()-latestPlayerLoss).toSec() > 5.0
+	          and oldUnreliability < 2.0) {
 		std::cout <<"torno indietro"<< (ros::Time::now()-latestPlayerLoss).toSec()<<std::endl;
 		input["Unreliability"] = 2.5;
 		//currentState=NORMAL;
 	}
-	
+
 }
 void BasketBotBrain::rotateAndSearch(float direction)
 {
@@ -58,9 +57,10 @@ void BasketBotBrain::runBrian()
 		if(stateDuration <= 0)
 			currentState = NORMAL;
 	}*/
-	
+	bool debugPrints = showBrianDebug && timeThrottle.checkElapsedNamed("brianDebug",0.5);
+
 	generateObstaclesData();
-	
+if(debugPrints)
 	std::cout << "unr: "<<messenger->getPlayerPositionUnreliability()<<std::endl;
 
 	//create brian variables
@@ -73,9 +73,9 @@ void BasketBotBrain::runBrian()
 	if(robotSpeeds.second == 0.0)
 		robotSpeeds.second = 0.01;
 	input["RobotLinearSpeed"] = robotSpeeds.first;
-	
-	
-	
+
+
+
 	input["RobotAngularSpeed"] = robotSpeeds.second;
 	input["PlayerDistance" ] = (messenger->getPlayerDistance() - distanceOffset) * distanceSensitivity;
 	input["PlayerOrientation"] = messenger->getPlayerOrientation()+orientationOffset;
@@ -88,10 +88,17 @@ void BasketBotBrain::runBrian()
 
 	checkUnreliability();
 
-	
+
 
 	input["StateElapsed"] = getCurrentStateElapsed();
+
+	if(debugPrints)
+		brian.setVerbosity(1);
+	else
+		brian.setVerbosity(0);
 	output = brian.execute(input);
+
+
 
 	float speed = 0,rotation=0;
 	speed = output["SpeedModule"];
@@ -103,14 +110,17 @@ void BasketBotBrain::runBrian()
 
 	setState( output["RobotStatus"]);
 	output["RobotStatus"] = (int) currentState;
-	std::cerr << (int) currentState<<std::endl;
-	std::cerr<<"obstacle range: "<<obstaclesRadarDistance<<std::endl;
+	if(debugPrints) {
+		std::cerr << (int) currentState<<std::endl;
+		std::cerr<<"obstacle range: "<<obstaclesRadarDistance<<std::endl;
+
+	}
 	/*if(input["StateElapsed"] > 5.0 && currentState != NORMAL)
 	{
 		setState(NORMAL);
 		std::cerr <<"reset"<<std::endl;
 	}*/
-	
+
 }
 
 
@@ -118,12 +128,12 @@ BasketBotBrain::BasketBotBrain(RosBrianBridge *messenger,std::string config_path
 {
 	orientationOffset = 0;
 
-	
+
 	playerSpeedSensitivity = 0.2;
 	reverseRotationThreshold = 0.5;
 	outputSnappiness = 0;
 	playerNotVisibleThreshold = 8.0;
-	
+
 	setState(EXPLORE);
 }
 
@@ -139,10 +149,9 @@ float BasketBotBrain::getParameter(std::string name)
 		return outputSnappiness;
 	else if(name == "orientationOffset")
 		return orientationOffset;
-		else if(name == "obstaclesRadarDistance")
-		return obstaclesRadarDistance;	
-	else
-	{
+	else if(name == "obstaclesRadarDistance")
+		return obstaclesRadarDistance;
+	else {
 		std::cerr<<"invalid brian parameter"<<std::endl;
 		exit(1);
 	}
@@ -160,10 +169,9 @@ void BasketBotBrain::setParameter(std::string name, float value)
 	else if(name == "orientationOffset")
 		orientationOffset = value;
 	else if(name == "obstaclesRadarDistance")
-		obstaclesRadarDistance = value;	
-		
-	else
-	{
+		obstaclesRadarDistance = value;
+
+	else {
 		std::cerr<<"invalid brian parameter"<<std::endl;
 		exit(1);
 	}
@@ -195,7 +203,7 @@ void BasketBotBrain::setState(float _s, float seconds)
 	currentState = s;
 	stateDuration = seconds;
 	input["RobotStatus"] = _s;
-	
+
 }
 bool BasketBotBrain::dangerCollision()
 {

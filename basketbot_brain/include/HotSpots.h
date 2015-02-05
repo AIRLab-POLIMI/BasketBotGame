@@ -29,6 +29,7 @@ class HotSpots
 	unsigned int matrixToArrayPos(std::pair<unsigned int,unsigned int> coords);
 	void generateBestMatch();
 	float getDistance(int,int,int,int);
+	float getDistance(unsigned int,unsigned int);
 	void debugPrint();
 	float getScore(unsigned int,unsigned int);
 	float matrixToArrayPos(unsigned int a ,unsigned int b);

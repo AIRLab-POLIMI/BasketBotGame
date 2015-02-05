@@ -1,0 +1,7 @@
+<launch>
+<include file="$(find basketbot_launch)/launch/basketbot_transforms.launch" />
+<include file="$(find basketbot_launch)/launch/basketbot_brain.launch" />
+<node pkg="rviz" type="rviz" name="rviz" />
+<node pkg="rqt_console" type="rqt_console" name="rqt_console" />
+<node pkg="basketbot_test" name="basketbot_test" type="basketbot_test_node" />
+</launch>

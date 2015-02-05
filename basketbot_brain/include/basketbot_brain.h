@@ -3,19 +3,25 @@
 #include <ros/ros.h>
 
 #include "BrianWrapper.h"
-enum BrainState {NONE,NORMAL,FROZEN,SEARCH_LEFT, SEARCH_RIGHT,EXPLORE};
 #include <tf/transform_listener.h>
 #include <player_tracker/PosPrediction.h>
 #include <geometry_msgs/PointStamped.h>
+
+	enum BrainState {NONE,NORMAL,FROZEN,SEARCH_LEFT, SEARCH_RIGHT,EXPLORE};
+
+
 #include "strategy.h"
+#include "time_throttle.h"
 class RosBrianBridge;
 class BasketBotBrain
 {
+public:
+
 private:
 	RosBrianBridge *messenger;
 	BrianWrapper brian;
 	BrianWrapper::DataContainer input, output;
-
+	TimeThrottle timeThrottle;
 	void runBrian();
 	float applyShape(float,float);
 	void checkUnreliability();
@@ -56,6 +62,7 @@ public:
 	float getCurrentStateElapsed();
 	float getParameter(std::string name);
 	bool dangerCollision();
+	bool isVisible();
 };
 
 #endif

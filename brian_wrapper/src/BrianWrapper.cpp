@@ -13,6 +13,11 @@ static void readConfigLine(std::ifstream & ifile, char *var)
 	strcpy(var,temp.c_str());
 	std::cout <<temp<<std::endl;
 }
+void BrianWrapper::setVerbosity(unsigned int v)
+{
+	verbosity = v;
+}
+
 BrianWrapper::DataContainer BrianWrapper::execute(const BrianWrapper::DataContainer input)
 {
 	brian->flush();

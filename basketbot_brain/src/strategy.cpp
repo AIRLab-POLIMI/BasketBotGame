@@ -4,19 +4,23 @@
 #include <stdlib.h>     /* srand, rand */
 #include <time.h>
 #include "RosBrianBridge.h"
-double defaultDistanceOffset = 1.5;
+double defaultDistanceOffset = 1.2;
 double defaultDistanceSensitivity = 0.5 ;
 double defaultObstaclesRadarDistance = 1.0;
+double defaultPlayerSpeedSensitivity = 0.2;
 
 double minSlowThresh = 0.4;
 double maxSlowThresh = 0.5;
 float minDistErrorThresh = 0.4;
 float maxDistErrorThresh = 0.5;
 
+bool strategia_anti_annoiamento=false;
+bool autoStart = true;
+
 void die(std::string message)
 {
 	std::cerr<<message<<std::endl;
-   ros::shutdown();
+	ros::shutdown();
 	exit(1);
 }
 #define GET_PARAM(x,y)  if(!pnh.getParam(x,y)) die("missing param" x)
@@ -25,26 +29,30 @@ Strategy::Strategy(BasketBotBrain* brain,RosBrianBridge* bridge) :nh(),pnh("~"),
 	goalPublisher = nh.advertise<geometry_msgs::PoseStamped >("/brain/goal",10);
 	predictionSubscriber = nh.subscribe("PosPrediction", 2, &Strategy::predictionCallback,this);
 
-	
+
 	GET_PARAM("default_distance_offset",defaultDistanceOffset);
 	GET_PARAM("default_distance_sensitivity",defaultDistanceSensitivity);
 	GET_PARAM("default_obstacles_radar_distance",defaultObstaclesRadarDistance);
-		GET_PARAM("min_slow_threshold",minSlowThresh);
-	GET_PARAM("max_slow_treshold",maxSlowThresh);
+	GET_PARAM("min_slow_threshold",minSlowThresh);
+	GET_PARAM("max_slow_threshold",maxSlowThresh);
+GET_PARAM("player_speed_sensitivity",defaultPlayerSpeedSensitivity);
+	hotSpotsReturningVisible.resetGrid(25,25,0.2);
 
-	hotSpotsReturningVisible.resetGrid(5,5,1.0);
-	
-	
+
 	std::cerr<<"distoff: "<<defaultDistanceOffset<<std::endl;
-	
+
 	timer = nh.createTimer(ros::Duration(1.0/10.0), &Strategy::strategyLoop,this);
 	srand(time(NULL));
 	brain->setParameter("distanceOffset",defaultDistanceOffset);
 	brain->setParameter("distanceSensitivity",defaultDistanceSensitivity);
 	brain->setParameter("obstaclesRadarDistance",defaultObstaclesRadarDistance);
+	brain->setParameter("playerSpeedSensitivity",defaultPlayerSpeedSensitivity);
 	userSeenAtLeastOnce = false;
 	brainState =brain->getState();
-	setStrategyState(NONE);
+	if(!autoStart)
+		setStrategyState(STOPPED);
+	else
+		setStrategyState(NONE);
 
 
 
@@ -140,11 +148,11 @@ void  Strategy::analyzeBrianState()
 
 
 	BrainState newState = brain->getState();
-previousBrainState = brainState;
+	previousBrainState = brainState;
 	if(newState == previousBrainState)
 		return;
 
-	
+
 	brainState = newState;
 	if(newState == NORMAL || previousBrainState == NORMAL) {
 		ros::Time now = ros::Time::now();
@@ -163,7 +171,7 @@ previousBrainState = brainState;
 
 		}
 	}
-	
+
 	switch(newState) {
 	case NORMAL:
 
@@ -175,9 +183,7 @@ previousBrainState = brainState;
 
 		break;
 	case FROZEN:
-		processEvent("freeze",1.0);
-
-
+		setStrategyState(FREEZE);
 		break;
 
 	default:
@@ -243,12 +249,17 @@ bool Strategy::isEventRelevant(std::string eventName, float eventSize)
 		return userJustAppeared;
 
 	} else {
-		ROS_FATAL_STREAM("unrecognized event");
-		exit(0);
+		return true;
 	}
 
 
 	return false;
+
+}
+
+bool Strategy::canestroDuranteFreeze()
+{
+	return (strategyState == FREEZE && lastUpdate < dataUltimoCanestro);
 
 }
 
@@ -301,6 +312,24 @@ void  Strategy::processEvent(std::string eventName, float eventSize)
 
 	} else if(eventName == "freeze") {
 		ROS_INFO_STREAM("robot frozen");
+
+	} else if(eventName == "unfreeze") {
+		if(canestroDuranteFreeze()) {
+			sguardoFisso = false;
+		} else {
+
+		}
+		//controlla se e' stato fatto un canestro oppure no
+	} else if(eventName == "canestro") {
+		ROS_INFO_STREAM("canestro");
+		if(strategyState==FREEZE) {
+
+
+		} else {
+			sguardoFisso = true;
+		}
+		//gestisci se era freezato oppure no
+		//gestisci se canestro laterale oppure no
 	} else if(eventName == "orientation_error") {
 		ROS_INFO_STREAM("EVENT: "<<eventName<<"\t"<<eventSize<<"  "<<lastPrediction.position.y);
 	} else if(eventName == "cross_orientation_velocity") {
@@ -314,6 +343,9 @@ void  Strategy::processEvent(std::string eventName, float eventSize)
 		}
 
 		ROS_INFO_STREAM("EVENT: "<<eventName<<"\t"<<eventSize);
+	} else {
+		ROS_FATAL_STREAM("unrecognized event");
+		exit(0);
 	}
 
 }
@@ -340,7 +372,8 @@ void  Strategy::analyzeUser()
 
 		lastOrientations.push_back(orientation);
 		lastDistances.push_back(distance);
-		lastSpeeds.push_back(speed);
+
+
 		lastXorientations.push_back(Xorientation);
 		if(lastOrientations.size()>100) {
 			lastOrientations.pop_front();
@@ -362,15 +395,9 @@ void  Strategy::analyzeUser()
 
 
 		}
-		if(lastSpeeds.size() > 20) {
-			lastSpeeds.pop_front();
-			float avg_speed = StrategyMath::calcAverage(lastSpeeds);
+		if(strategyAnalyzer.recordSpeed(speed))
+			processEvent("speed",strategyAnalyzer.getAvgSpeed());
 
-			processEvent("speed",speed);
-
-			//la varianza e' data da matrice P
-
-		}
 
 
 
@@ -387,15 +414,18 @@ void  Strategy::analyzeUser()
 
 void Strategy::setStrategyState(StrategyState newState)
 {
-	if(strategyState == newState)
-		return;
-
-
-	if(newState == PREVIOUS_STATE) {
+	if(newState == THIS_STATE) {
+		newState = strategyState;
+	} else if(newState == PREVIOUS_STATE) {
 		if(oldStrategyState!= PREVIOUS_STATE)
 			setStrategyState(oldStrategyState);
 		return;
+	} else if(strategyState == newState) {
+		return;
 	}
+
+
+	ROS_INFO_STREAM("StrategyState: "<<newState);
 
 	oldStrategyState = strategyState;
 	strategyState = newState;
@@ -408,6 +438,54 @@ void Strategy::setStrategyState(StrategyState newState)
 	if(oldStrategyState == LATERALE_1 || oldStrategyState == LATERALE_2) {
 		brain->setParameter("orientationOffset",0);
 		brain->setParameter("distanceOffset",defaultDistanceOffset);
+	}
+	if(oldStrategyState == FREEZE) {
+		double el = (ros::Time::now()-lastUpdate).toSec();
+		processEvent("unfreeze",el);
+	}
+
+	if(oldStrategyState == SCARTO_SINISTRA) {
+		brain->setParameter("orientationOffset",0);
+		brain->setParameter("distanceOffset",defaultDistanceOffset);
+		float ds = brain->getParameter("distanceSensitivity");
+		brain->setParameter("distanceSensitivity",ds/1.5);
+	}
+	if(oldStrategyState == SCARTO_DESTRA) {
+		brain->setParameter("orientationOffset",0);
+		brain->setParameter("distanceOffset",defaultDistanceOffset);
+		float ds = brain->getParameter("distanceSensitivity");
+		brain->setParameter("distanceSensitivity",ds/1.5);
+	}
+	if(oldStrategyState == AVVICINAMENTO_SINISTRA) {
+		brain->setParameter("orientationOffset",0);
+		brain->setParameter("distanceOffset",defaultDistanceOffset);
+	}
+	if(oldStrategyState == AVVICINAMENTO_DESTRA) {
+		brain->setParameter("orientationOffset",0);
+		brain->setParameter("distanceOffset",defaultDistanceOffset);
+	}
+
+	if(newState == SCARTO_SINISTRA) {
+		if(lastPrediction.velocity.y > 0)
+			brain->setParameter("orientationOffset",0.3);
+		brain->setParameter("distanceOffset",defaultDistanceOffset*3.0);
+		float ds = brain->getParameter("distanceSensitivity");
+		brain->setParameter("distanceSensitivity",ds*1.5);
+	}
+	if(newState == SCARTO_DESTRA) {
+		if(lastPrediction.velocity.y < 0)
+			brain->setParameter("orientationOffset",-0.3);
+		brain->setParameter("distanceOffset",defaultDistanceOffset*3.0);
+		float ds = brain->getParameter("distanceSensitivity");
+		brain->setParameter("distanceSensitivity",ds*1.5);
+	}
+	if(newState == AVVICINAMENTO_SINISTRA) {
+		brain->setParameter("orientationOffset",-0.3);
+		brain->setParameter("distanceOffset",defaultDistanceOffset*0.7);
+	}
+	if(newState == AVVICINAMENTO_DESTRA) {
+		brain->setParameter("orientationOffset",0.3);
+		brain->setParameter("distanceOffset",defaultDistanceOffset*0.7);
 	}
 
 
@@ -428,8 +506,15 @@ void Strategy::setStrategyState(StrategyState newState)
 	if(newState == LATERALE_2) {
 		brain->setParameter("orientationOffset",0.2);
 	}
-
+	if(newState == FREEZE) {
+		processEvent("freeze",1.0);
+	}
 	lastUpdate = ros::Time::now();
+}
+void Strategy::start_stop()
+{
+
+	exit(1);
 }
 void Strategy::applyStrategy()
 {
@@ -444,8 +529,13 @@ void Strategy::applyStrategy()
 	std::cerr<<"slow: "<<slow<<std::endl;
 
 	switch(strategyState) {
+	case STOPPED:
+		brain->freeze(5000);
+		break;
 	case NONE:
-		if( elapsedFromStrategyChange()> 3.0 && slow) {
+		if(!brain->isVisible())
+			break;
+		if( elapsedFromStrategyChange()> 3.0 && slow && strategia_anti_annoiamento) {
 			ROS_INFO_STREAM("Player is bored? let's try something...");
 			int rn = rand() % 3;
 			if(rn==0)//due poss. su tre che si allontani
@@ -454,8 +544,52 @@ void Strategy::applyStrategy()
 				setStrategyState(LATERALE_1);
 			else
 				setStrategyState(TILT_LEFT);
+			break;
+		}
+		if( elapsedFromStrategyChange()> 0.5 && !slow && !sguardoFisso ) {
+			if(lastPrediction.velocity.y > 0)
+				setStrategyState(SCARTO_SINISTRA);
+			else
+				setStrategyState(SCARTO_DESTRA);
+			break;
+		}
+		if( elapsedFromStrategyChange()> 0.5 && !slow && sguardoFisso ) {
+			setStrategyState(STAY_AWAY);
+
+		}
+		break;
+
+
+	case SCARTO_SINISTRA:
+		if( elapsedFromStrategyChange()> 3.0) {
+			setStrategyState(AVVICINAMENTO_SINISTRA);
 		}
 
+		break;
+	case SCARTO_DESTRA:
+		if( elapsedFromStrategyChange()> 3.0) {
+			setStrategyState(AVVICINAMENTO_DESTRA);
+
+		}
+	case AVVICINAMENTO_SINISTRA:
+		if( elapsedFromStrategyChange()> 3.0) {
+			setStrategyState(SCARTO_SINISTRA);
+		}
+
+		break;
+	case AVVICINAMENTO_DESTRA:
+		if( elapsedFromStrategyChange()> 3.0) {
+			setStrategyState(SCARTO_DESTRA);
+
+		}
+		break;
+	case GIRO_DESTRA:
+		publishGoalRelative(-1,0.5);
+		if( elapsedFromStrategyChange()> 3.0) {
+
+
+			setStrategyState(PREVIOUS_STATE);
+		}
 		break;
 	case STAY_AWAY:
 		if( elapsedFromStrategyChange()> 0.5 && !slow) {
@@ -531,7 +665,20 @@ void Strategy::applyStrategy()
 	}
 
 }
+void Strategy::canestro()
+{
+	/*tre situazioni:
+	  canestro durante freeze,
+	   * canestro senza freeze
+	   * unfreeze senza canestro*/
 
+	dataUltimoCanestro = ros::Time::now();
+	if(strategyState==FREEZE) {
+		processEvent("canestro",1.0);
+
+	} else
+		processEvent("canestro",-1.0);
+}
 void Strategy::printDebugInfo()
 {
 	if(strategyState==STAY_AWAY)
@@ -559,7 +706,7 @@ void Strategy::analyzeRobot()
 
 		std::cerr<<"inversioni: "<<inversioni<<std::endl;
 		if(inversioni > 5) {
-			brain->freeze(5000);
+			//brain->freeze(5000);
 
 		}
 
