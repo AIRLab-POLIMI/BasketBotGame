@@ -5,6 +5,7 @@
 
 const unsigned int rate = 30;
 bool showBrianDebug = true;
+bool autoMode = true;
 bool BasketBotBrain::isVisible()
 {
 	return messenger->getPlayerPositionUnreliability()<playerNotVisibleThreshold;
@@ -66,6 +67,7 @@ if(debugPrints)
 	//create brian variables
 
 	RosBrianBridge::Goal goal = messenger->getGoal();
+	input["AutoMode"] = autoMode?1.0:0;
 	input["GoalDistance"] = goal.distance;
 	input["GoalAngle"] = goal.angle;
 	input["GoalAge"] = goal.age;
@@ -78,6 +80,8 @@ if(debugPrints)
 
 	input["RobotAngularSpeed"] = robotSpeeds.second;
 	input["PlayerDistance" ] = (messenger->getPlayerDistance() - distanceOffset) * distanceSensitivity;
+	if(messenger->getPlayerDistance()<0.5)
+		input["PlayerDistance" ] = -100.0;
 	input["PlayerOrientation"] = messenger->getPlayerOrientation()+orientationOffset;
 	input["PlayerVelocityX"] = messenger->getPlayerVelocityX()*playerSpeedSensitivity;
 	input["PlayerVelocityY"] = messenger->getPlayerVelocityY()*playerSpeedSensitivity/messenger->getPlayerDistance();
@@ -170,19 +174,26 @@ void BasketBotBrain::setParameter(std::string name, float value)
 		orientationOffset = value;
 	else if(name == "obstaclesRadarDistance")
 		obstaclesRadarDistance = value;
-
+	else if(name == "brianDebug")
+		showBrianDebug = value>0.5;
+	else if(name == "autoMode")
+		autoMode= value>0.5;
 	else {
 		std::cerr<<"invalid brian parameter"<<std::endl;
 		exit(1);
 	}
 }
-float BasketBotBrain::applyShape(float input,float shape)
+float BasketBotBrain::applyShape(float input,float snappiness)
 {
-	if(shape > 0)
-		return pow(input,shape+1.0);
-	if(shape < 0)
-		return pow(input,1/(1-shape));
-	return input;
+	
+	float result = input;
+	if(snappiness < 0)
+		result = copysign(pow(fabs(input),1.0-snappiness),input);
+	if(snappiness > 0)
+		result = copysign(pow(fabs(input),1/(1+snappiness)),input);
+	
+	//std::cerr<<"input: "<<input<<"  snappiness: "<<snappiness<<"  result: "<<result<<std::endl;	
+	return result;
 
 }
 void BasketBotBrain::freeze(float seconds)

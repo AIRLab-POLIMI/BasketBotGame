@@ -5,7 +5,6 @@
 #include <std_msgs/Empty.h>
 std::string brian_config_path = ros::package::getPath("basketbot_brain") + "/config";
 
-float RosBrianBridge::maxSpeeds = 0.25;
 
 void RosBrianBridge::goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
@@ -23,7 +22,7 @@ void RosBrianBridge::setSpeed(float v, float rot)
 
 
 	//limit values
-	float maxV = 3.0*maxSpeeds,maxR = 3.0*maxSpeeds;
+	float maxV = maxSpeed,maxR = maxRotSpeed;
 	v *= maxV;
 	rot*= maxR;
 	v=std::min(std::max(v,-maxV),maxV);
@@ -39,7 +38,7 @@ void RosBrianBridge::setSpeed(float v, float rot)
 void RosBrianBridge::userPoseCallback(const userpose_recognition::UserPoseConstPtr & msg)
 {
 	std::cerr << "rilevata posa: "<<msg->poseName<<std::endl;
-	if(msg->poseName=="surrender")
+	if(msg->poseName==throwPoseName)
 		brain.freeze(5.0);
 
 }
@@ -54,22 +53,37 @@ void RosBrianBridge::canestroCallback(const std_msgs::Empty::ConstPtr &)
 {
 	strategy.canestro();
 }
-RosBrianBridge::RosBrianBridge():brain(this,brian_config_path),strategy(&brain,this),obstaclesListener()
+static void die(std::string message)
 {
-	predictionSubscriber = node.subscribe("PosPrediction", 2, &RosBrianBridge::predictionCallback,this);
+	std::cerr<<message<<std::endl;
+	ros::shutdown();
+	exit(1);
+}
+#define GET_PARAM(x,y)  if(!pnh.getParam(x,y)) die("missing param" x)
+RosBrianBridge::RosBrianBridge():node(),pnh("~"),brain(this,brian_config_path),strategy(&brain,this),obstaclesListener()
+{
+	maxSpeed = 0.70;
+    maxRotSpeed = 0.70;
+	throwPoseName = "tiro";
 	commandsPublisher = node.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
 	commandsPublisherTiltone = node.advertise<r2p::Velocity>("/tiltone/Velocity", 10);
+	
+	predictionSubscriber = node.subscribe("PosPrediction", 2, &RosBrianBridge::predictionCallback,this);
 	userPoseSubscriber = node.subscribe("UserPose", 2, &RosBrianBridge::userPoseCallback,this);
 	suggestedCmdVelKey = node.subscribe("/suggested_cmd_vel", 2,&RosBrianBridge::desiredCmdVelKeyCallback,this);
 	suggestedCmdVelJoy = node.subscribe("/tiltone/velocityD", 2,&RosBrianBridge::desiredCmdVelJoyCallback,this);
 	odomSubscriber = node.subscribe("/odom", 2,&RosBrianBridge::odomCallback,this);
 	goalSubscriber = node.subscribe("goal",2,&RosBrianBridge::goalCallback,this);
 	canestroSubscriber = node.subscribe("/canestro",2,&RosBrianBridge::canestroCallback,this);
+	
 	suggestedLinearSpeed = suggestedAngularSpeed = 0;
 	last_odometry_v = last_odometry_alpha = 0;
 	currentUnreliability = 10000.0;
+	GET_PARAM("max_speed",maxSpeed);
+	GET_PARAM("max_rot_speed",maxRotSpeed);
+	GET_PARAM("throw_pose_name",throwPoseName);
 }
-
+#undef GET_PARAM
 void RosBrianBridge::desiredCmdVelJoyCallback(const r2p::Velocity::ConstPtr& msg)
 {
 	float r = msg->w / 10.0;
@@ -86,7 +100,7 @@ void RosBrianBridge::desiredCmdVelKeyCallback(const geometry_msgs::Twist::ConstP
 {
 	float v = 5.0*msg->linear.x;
 	float r = msg->angular.z;
-
+last_joy_suggestion = ros::Time::now();
 	suggestedLinearSpeed = v;
 	suggestedAngularSpeed=r;
 }

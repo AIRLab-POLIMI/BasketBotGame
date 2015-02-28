@@ -1,17 +1,19 @@
 <launch>
-<group ns="brain"> 
-   <node name="player_recognition" pkg="player_tracker" type="player_recognition" output="screen" >
+ <group ns="brain"> 
+  <arg name="debug" value="false" />
+
+     <node name="player_recognition" pkg="player_tracker" type="player_recognition" output="screen" >
 	<remap from="/COMPoints" to="/camera/COMPoints" />
-  </node>    
+     </node>    
 
-   <node name="basketbot_brain" pkg="basketbot_brain" type="basketbot_brain" output="screen">
-   <rosparam command="load" file="$(find basketbot_launch)/conf/basketbot_brain.conf" />
 
-<!--    <param name="default_distance_offset" value="1.5" /> 
-   <param name="default_distance_sensitivity" value="0.5" />    
-   <param name="default_obstacles_radar_distance" value="1.0" />
-   <param name="min_slow_threshold" value="0.4" />
-   <param name="max_slow_threshold" value="0.5" />-->
-   </node>
-</group>
+     <node name="basketbot_brain" pkg="basketbot_brain" type="basketbot_brain" output="screen" launch-prefix="gdb -ex run --args" if="$(arg debug)" >
+        <rosparam command="load" file="$(find basketbot_launch)/conf/basketbot_brain.conf" />
+     </node>
+   
+     <node name="basketbot_brain" pkg="basketbot_brain" type="basketbot_brain" output="screen" unless="$(arg debug)">
+        <rosparam command="load" file="$(find basketbot_launch)/conf/basketbot_brain.conf" />
+     </node>
+
+ </group>
 </launch>

@@ -1,5 +1,5 @@
 <launch>
-<arg name="senzarobot" default="$(optenv OPENNI_WATCHDOG false)" />
+<arg name="senzarobot" default="$(optenv SENZA_ROBOT false)" />
 <node name="userpose_recognition" pkg="userpose_recognition" type="userpose_recognition" >
 <param name="nogui" type="bool" value="true" unless="$(arg senzarobot)"/>
 <param name="nogui" type="bool" value="false" if="$(arg senzarobot)"/>

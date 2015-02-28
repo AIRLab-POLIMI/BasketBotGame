@@ -17,8 +17,8 @@
 (PlayerLeft) => (RotSpeed LEFT);
 (PlayerRight) => (RotSpeed RIGHT);
 
-#(NOT (OR (PlayerLeft)) (PlayerRight)) => (RotSpeed STEADY);
-(PlayerFront) => (RotSpeed STEADY);
+(NOT (OR (PlayerLeft) (PlayerRight))) => (RotSpeed STEADY);
+
 
 (PlayerRunningCounterclockwise) =>(RotSpeed LEFT);
 (PlayerRunningClockwise) =>(RotSpeed RIGHT);

@@ -85,12 +85,11 @@ void PlayerTracker::updateOdometry(const ros::TimerEvent&)
 	deleteOldUsers();
 	//update odometry
 	for(unsigned int i = 0; i < potentialPlayers.size(); i++)
-		if(potentialPlayers[i].valid)
-		{	
+		if(potentialPlayers[i].valid) {
 			potentialPlayers[i].playerFilter.updateOdometry(robotLinearSpeed, robotAngularSpeed);
 			potentialPlayers[i].score = calculateScore(i);
-		
-		
+
+
 		}
 
 	//publish player info
@@ -145,10 +144,23 @@ float PlayerTracker::calculateScore(unsigned int playerID)
 
 	float speedScore = 1.5 * applySlope(speed,0.2,0.3);
 	if(playerID <= MAX_ID)
-		 speedScore += 0.5;
-	
+		speedScore += 0.5;
+
+	/*NON ANCORA TESTATO*/
+	/*if(playerID <= MAX_ID)
+		for(unsigned int i = MAX_ID+1; i < potentialPlayers.size(); i++) {
+			std::vector<float> res = potentialPlayers[i].playerFilter.getStatus();
+			std::vector<float> res2 = potentialPlayers[playerID].playerFilter.getStatus();
+			float dist = sqrt( (res[0]-res2[0])*(res[0]-res2[0])   + (res[1]-res2[1])*(res[1]-res2[1]))
+			if(dist < 1.0) {
+				speedScore += 0.5;
+				break;
+			}
+		}
+*/
+
 	return speedScore;
-		
+
 
 
 
@@ -171,15 +183,14 @@ void PlayerTracker::deleteOldUsers()
 {
 	ros::Time now = ros::Time::now();
 	for(unsigned int i = 0; i < potentialPlayers.size(); i++)
-		if(potentialPlayers[i].valid && (now - potentialPlayers[i].lastUpdate).toSec() > USERLOST_TIMEOUT)
-		{
+		if(potentialPlayers[i].valid && (now - potentialPlayers[i].lastUpdate).toSec() > USERLOST_TIMEOUT) {
 			if(currentPlayer == i)
 				currentPlayer = -1;
 			potentialPlayers[i].valid = false;
-			
-			
-			
-			
+
+
+
+
 		}
 }
 void PlayerTracker::handlePoints(const pcl::PointCloud<pcl::PointXYZL>::ConstPtr& msg,unsigned int offset)
@@ -198,25 +209,25 @@ void PlayerTracker::handlePoints(const pcl::PointCloud<pcl::PointXYZL>::ConstPtr
 		if(distanza > 0.1)
 			potentialPlayers[id].playerFilter.updatePlayerPos(distanza,angolo);
 		potentialPlayers[id].lastUpdate = now;
-		
+
 	}
-	
+
 	//TODO continua
-	
-	
+
+
 }
 
 void PlayerTracker::facesCallback(const pcl::PointCloud<pcl::PointXYZL>::ConstPtr& msg)
 {
 	handlePoints(msg,MAX_ID+1);
 	return;
-	
+
 }
 void PlayerTracker::playerPosCallback2(const pcl::PointCloud<pcl::PointXYZL>::ConstPtr& msg)
 {
 	handlePoints(msg,0);
 	return;
-	
+
 
 }
 

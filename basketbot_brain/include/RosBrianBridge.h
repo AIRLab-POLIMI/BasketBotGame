@@ -26,6 +26,7 @@ public:
 	float last_odometry_alpha;
 
 	ros::NodeHandle node;
+	ros::NodeHandle pnh;
 	ros::Subscriber predictionSubscriber;
 	ros::Subscriber userPoseSubscriber;
 	ros::Publisher commandsPublisher;
@@ -37,8 +38,13 @@ public:
 	ros::Subscriber canestroSubscriber;
 	tf::TransformListener transformListener;
 	
+	//Params:
+	double maxSpeed;
+	double maxRotSpeed;
+	std::string throwPoseName;
 	
-	static float maxSpeeds;
+	
+	
 	BasketBotBrain brain;
 	Strategy strategy;
 	ObstaclesListener obstaclesListener;

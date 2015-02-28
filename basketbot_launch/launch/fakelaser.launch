@@ -4,7 +4,7 @@
  <remap from="image" to="/camera/depth/image_raw" />
  <param name="scan_time" value="0.033"/>
  <param name="scan_height" value="100"/>
- <param name="output_frame_id" value="laserscan_stabilized"/>
+ <param name="output_frame_id" value="base_stabilized"/>
 </node>
 
 </launch>

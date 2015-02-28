@@ -21,7 +21,10 @@ class HotSpots
 	float bestX;
 	float bestY;
 	float bestConfidence;
-
+	
+	//Center of the map
+	float center_x;
+	float center_y;
 
 	unsigned int pointPosition(int,int);
 	float readPoint(float x,float y);
@@ -33,20 +36,20 @@ class HotSpots
 	void debugPrint();
 	float getScore(unsigned int,unsigned int);
 	float matrixToArrayPos(unsigned int a ,unsigned int b);
-
+	void moveMap(int X,int Y);
 #ifdef DEBUG_HOTSPOTS_MAP
 	ros::NodeHandle nh;
 	ros::Publisher debugHotSpotsPublisher;
 #endif 
 
-
+   std::pair<float,float> worldToMatrixPos(unsigned int x,unsigned int y);
 public:
 	bool recordPoint(float x,float y,float value=1.0);
 	HotSpots();
 	float getConfidence();
 	std::pair<float,float> getBestMatch();
-	void resetGrid(float width,float depth,float step);
-
+	void initGrid(float width,float depth,float step);
+    void setParameters(float hotSpotsRadius,float hotSpotsDecayRate,float hotSpotsConfidenceRadius);
 
 
 };

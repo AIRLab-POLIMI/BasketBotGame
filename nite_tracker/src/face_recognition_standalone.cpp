@@ -140,7 +140,7 @@ FaceRecognitionBridge::FaceRecognitionBridge():nh(ros::NodeHandle()),it(nh),
 	users_sub(nh, "users",2),
 	image_sub(nh, "/camera/rgb/image_raw", 2),
 	image_info_sub(nh, "/camera/rgb/camera_info", 2),
-	depth_sub(nh, "/camera/depth/image_raw", 2),
+	depth_sub(nh, "/camera/depth_registered/sw_registered/image_rect_raw", 2),
 	sync(MySyncPolicy(10), image_sub, image_info_sub, depth_sub,users_sub)
 {
 	image_transport::SubscriberStatusCallback itssc = boost::bind(&FaceRecognitionBridge::connectCb, this);

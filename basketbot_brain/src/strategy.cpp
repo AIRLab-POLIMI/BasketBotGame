@@ -7,6 +7,8 @@
 double defaultDistanceOffset = 1.2;
 double defaultDistanceSensitivity = 0.5 ;
 double defaultObstaclesRadarDistance = 1.0;
+double obstaclesRadarIncrement = 1.5;
+double maxObstaclesRadarDistance = 4.0;
 double defaultPlayerSpeedSensitivity = 0.2;
 
 double minSlowThresh = 0.4;
@@ -17,36 +19,69 @@ float maxDistErrorThresh = 0.5;
 bool strategia_anti_annoiamento=false;
 bool autoStart = true;
 
-void die(std::string message)
+float ds_const = 2.0;
+
+static void die(std::string message)
 {
 	std::cerr<<message<<std::endl;
 	ros::shutdown();
 	exit(1);
 }
+
 #define GET_PARAM(x,y)  if(!pnh.getParam(x,y)) die("missing param" x)
+void Strategy::loadParameters()
+{
+		GET_PARAM("default_distance_offset",defaultDistanceOffset);
+	GET_PARAM("default_distance_sensitivity",defaultDistanceSensitivity);
+	GET_PARAM("default_obstacles_radar_distance",defaultObstaclesRadarDistance);
+	GET_PARAM("max_obstacles_radar_distance",maxObstaclesRadarDistance);
+	GET_PARAM("obstacles_radar_increment",obstaclesRadarIncrement);
+	GET_PARAM("min_slow_threshold",minSlowThresh);
+	GET_PARAM("max_slow_threshold",maxSlowThresh);
+    GET_PARAM("player_speed_sensitivity",defaultPlayerSpeedSensitivity);
+	GET_PARAM("auto_start",autoStart);
+	
+	double hotSpotsWidth = 25, hotSpotsHeight=25, hotSpotsStep=0.2;
+	GET_PARAM("hotspots_width",hotSpotsWidth);
+	GET_PARAM("hotspots_height",hotSpotsHeight);
+	GET_PARAM("hotspots_step",hotSpotsStep);
+	hotSpotsReturningVisible.initGrid(hotSpotsWidth,hotSpotsHeight,hotSpotsStep);
+
+	double hotSpotsRadius = 1.1, hotSpotsDecayRate = 0.5, hotSpotsConfidenceRadius = 1.0;
+	GET_PARAM("hotspots_radius",hotSpotsRadius);
+	GET_PARAM("hotspots_decay_rate",hotSpotsDecayRate);
+	GET_PARAM("hotspots_confidence_radius",hotSpotsConfidenceRadius);
+	hotSpotsReturningVisible.setParameters(hotSpotsRadius,hotSpotsDecayRate,hotSpotsConfidenceRadius);
+
+	bool brian_debug = false;
+	GET_PARAM("brian_debug",brian_debug);
+	brain->setParameter("brianDebug",brian_debug?1.0:0.0);
+	
+	bool auto_mode = true;
+	GET_PARAM("auto_mode",auto_mode);
+	brain->setParameter("autoMode",auto_mode?1.0:0.0);
+	std::cerr<<"distoff: "<<defaultDistanceOffset<<std::endl;
+
+	brain->setParameter("distanceOffset",defaultDistanceOffset);
+	brain->setParameter("distanceSensitivity",defaultDistanceSensitivity);
+	brain->setParameter("obstaclesRadarDistance",defaultObstaclesRadarDistance);
+	brain->setParameter("playerSpeedSensitivity",defaultPlayerSpeedSensitivity);
+	
+	double output_snappiness;
+	GET_PARAM("output_snappiness",output_snappiness);
+	brain->setParameter("outputSnappiness",output_snappiness);
+}
+#undef GET_PARAM
 Strategy::Strategy(BasketBotBrain* brain,RosBrianBridge* bridge) :nh(),pnh("~"),brain(brain),bridge(bridge),hotSpotsReturningVisible()
 {
 	goalPublisher = nh.advertise<geometry_msgs::PoseStamped >("/brain/goal",10);
 	predictionSubscriber = nh.subscribe("PosPrediction", 2, &Strategy::predictionCallback,this);
 
-
-	GET_PARAM("default_distance_offset",defaultDistanceOffset);
-	GET_PARAM("default_distance_sensitivity",defaultDistanceSensitivity);
-	GET_PARAM("default_obstacles_radar_distance",defaultObstaclesRadarDistance);
-	GET_PARAM("min_slow_threshold",minSlowThresh);
-	GET_PARAM("max_slow_threshold",maxSlowThresh);
-GET_PARAM("player_speed_sensitivity",defaultPlayerSpeedSensitivity);
-	hotSpotsReturningVisible.resetGrid(25,25,0.2);
-
-
-	std::cerr<<"distoff: "<<defaultDistanceOffset<<std::endl;
+	loadParameters();
 
 	timer = nh.createTimer(ros::Duration(1.0/10.0), &Strategy::strategyLoop,this);
 	srand(time(NULL));
-	brain->setParameter("distanceOffset",defaultDistanceOffset);
-	brain->setParameter("distanceSensitivity",defaultDistanceSensitivity);
-	brain->setParameter("obstaclesRadarDistance",defaultObstaclesRadarDistance);
-	brain->setParameter("playerSpeedSensitivity",defaultPlayerSpeedSensitivity);
+	
 	userSeenAtLeastOnce = false;
 	brainState =brain->getState();
 	if(!autoStart)
@@ -54,13 +89,8 @@ GET_PARAM("player_speed_sensitivity",defaultPlayerSpeedSensitivity);
 	else
 		setStrategyState(NONE);
 
-
-
-
-
-
 }
-#undef GET_PARAM
+
 
 bool Strategy::isPlayerSlow()
 {
@@ -337,9 +367,9 @@ void  Strategy::processEvent(std::string eventName, float eventSize)
 	} else if(eventName == "danger_collision") {
 
 		float obsRange = brain->getParameter("obstaclesRadarDistance");
-		if(obsRange < defaultObstaclesRadarDistance*2.0) {
-			brain->setParameter("obstaclesRadarDistance",obsRange*1.1);
-			ROS_INFO_STREAM("Increased radar range to: "<<obsRange*1.1);
+		if(obsRange < maxObstaclesRadarDistance) {
+			brain->setParameter("obstaclesRadarDistance",obsRange*obstaclesRadarIncrement);
+			ROS_INFO_STREAM("Increased radar range to: "<<obsRange*obstaclesRadarIncrement);
 		}
 
 		ROS_INFO_STREAM("EVENT: "<<eventName<<"\t"<<eventSize);
@@ -448,13 +478,13 @@ void Strategy::setStrategyState(StrategyState newState)
 		brain->setParameter("orientationOffset",0);
 		brain->setParameter("distanceOffset",defaultDistanceOffset);
 		float ds = brain->getParameter("distanceSensitivity");
-		brain->setParameter("distanceSensitivity",ds/1.5);
+		brain->setParameter("distanceSensitivity",ds/ds_const);
 	}
 	if(oldStrategyState == SCARTO_DESTRA) {
 		brain->setParameter("orientationOffset",0);
 		brain->setParameter("distanceOffset",defaultDistanceOffset);
 		float ds = brain->getParameter("distanceSensitivity");
-		brain->setParameter("distanceSensitivity",ds/1.5);
+		brain->setParameter("distanceSensitivity",ds/ds_const);
 	}
 	if(oldStrategyState == AVVICINAMENTO_SINISTRA) {
 		brain->setParameter("orientationOffset",0);
@@ -470,14 +500,14 @@ void Strategy::setStrategyState(StrategyState newState)
 			brain->setParameter("orientationOffset",0.3);
 		brain->setParameter("distanceOffset",defaultDistanceOffset*3.0);
 		float ds = brain->getParameter("distanceSensitivity");
-		brain->setParameter("distanceSensitivity",ds*1.5);
+		brain->setParameter("distanceSensitivity",ds*ds_const);
 	}
 	if(newState == SCARTO_DESTRA) {
 		if(lastPrediction.velocity.y < 0)
 			brain->setParameter("orientationOffset",-0.3);
 		brain->setParameter("distanceOffset",defaultDistanceOffset*3.0);
 		float ds = brain->getParameter("distanceSensitivity");
-		brain->setParameter("distanceSensitivity",ds*1.5);
+		brain->setParameter("distanceSensitivity",ds*ds_const);
 	}
 	if(newState == AVVICINAMENTO_SINISTRA) {
 		brain->setParameter("orientationOffset",-0.3);
@@ -526,7 +556,7 @@ void Strategy::applyStrategy()
 	}
 
 	bool slow = isPlayerSlow();
-	std::cerr<<"slow: "<<slow<<std::endl;
+	ROS_DEBUG_STREAM("slow: "<<slow);
 
 	switch(strategyState) {
 	case STOPPED:
@@ -657,6 +687,11 @@ void Strategy::applyStrategy()
 		if(elapsedFromStrategyChange() > 1.0) {
 			float rd = rand();
 			float radius = 0.5;
+			float el = (ros::Time::now() - lastPlayerPos.header.stamp).toSec();
+			if(el > 5)
+			radius = 2.0;
+			
+			
 			publishGoalAbsolute(lastPlayerPos.point.x+radius*sin(rd),lastPlayerPos.point.y+radius*cos(rd));
 			setStrategyState(LAST_POSITION);
 		}
@@ -682,11 +717,11 @@ void Strategy::canestro()
 void Strategy::printDebugInfo()
 {
 	if(strategyState==STAY_AWAY)
-		std::cerr<<"SS: STAY_AWAY"<<std::endl;
+		ROS_DEBUG_STREAM("SS: STAY_AWAY");
 	else if(strategyState==TILT_LEFT)
-		std::cerr<<"SS: TILT_LEFT"<<std::endl;
+		ROS_DEBUG_STREAM("SS: TILT_LEFT");
 	else
-		std::cerr<<"SS: "<<strategyState<<std::endl;
+		ROS_DEBUG_STREAM("SS: "<<strategyState);
 }
 
 
@@ -704,7 +739,7 @@ void Strategy::analyzeRobot()
 
 		unsigned int inversioni = StrategyMath::misuraInversioni(lastRobotRotSpeeds,ampiezza_max);
 
-		std::cerr<<"inversioni: "<<inversioni<<std::endl;
+		ROS_DEBUG_STREAM("inversioni: "<<inversioni);
 		if(inversioni > 5) {
 			//brain->freeze(5000);
 

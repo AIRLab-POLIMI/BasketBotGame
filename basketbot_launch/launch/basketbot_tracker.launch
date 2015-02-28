@@ -3,7 +3,7 @@
 <group ns="tracker">
      <node name="face_recognition" pkg="nite_tracker" type="face_recognition_standalone" launch-prefix="nice -n 1" />
      <node name="face_detector_filter" pkg="nite_tracker" type="face_detector_filter" />
-     <node pkg="nodelet" type="nodelet" name="drivere" args="load nite_tracker/NiteTrackerNodelet /camera/driver_nodelet_manager" respawn="true" />
+     <node pkg="nodelet" type="nodelet" name="drivere" args="load nite_tracker/NiteTrackerNodelet /camera/camera_nodelet_manager" respawn="true" />
 </group>
 
 

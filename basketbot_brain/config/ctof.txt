@@ -33,3 +33,4 @@
 
 (StateElapsed ELAPSEDTIME)
 (GoalAge ELAPSEDTIME)
+(AutoMode TRUE_FALSE)

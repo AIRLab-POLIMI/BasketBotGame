@@ -6,18 +6,60 @@
 #ifdef DEBUG_HOTSPOTS_MAP
 #include <nav_msgs/OccupancyGrid.h>
 #endif
-
+void HotSpots::moveMap(int offsetX,int offsetY)
+{
+	std::cerr<<"move: "<<offsetX <<"  "<<offsetY<<std::endl;
+	std::vector<float> oldScores = scores;
+	for(int i = 0; i<width*depth; i++)
+		scores[i] = 0;
+		
+	for(int y = std::max(offsetY,0); y < std::min(offsetY+depth,depth); y++)
+		for(int x = std::max(offsetX,0); x < std::min(offsetX+width,width); x++) 	
+		{
+			unsigned int oldPos = matrixToArrayPos(x,y);
+			unsigned int newPos = matrixToArrayPos(x-offsetX,y-offsetY);
+			std::cerr<<"old: "<<oldPos<<"  new: "<<newPos<<std::endl;
+			scores[newPos] = oldScores[oldPos];
+		}
+	center_x += offsetX*step;
+	center_y += offsetY * step;
+	if(center_x > 1000.0)
+	exit(1);
+}
 std::pair<unsigned int,unsigned int> HotSpots::worldToMatrixPos(float x,float y)
 {
+	x-=center_x;
+	y-= center_y;
 	std::cerr<<(depth*step/2.0)<<std::endl;
-	int coordX = (x+(width*step/2.0))/step;
-	int coordY = (y+(depth*step/2.0))/step;
+	int coordX = floor((x+(width*step/2.0))/step);
+	int coordY = floor((y+(depth*step/2.0))/step);
 
-	std::cerr<<coordX<<y<<std::endl;
+	std::cerr<<"World: "<<x<<";"<<y<<";X: " <<coordX<<" Y: "<<coordY<<std::endl;
 
 	if(coordX < 0 || coordY < 0 || coordX>=width || coordY >= depth)
-		throw std::string("error");
+	{
+		int offsetX =0,offsetY=0;
+		if(coordX<0)
+			offsetX = coordX;
+		if(coordY<0)
+			offsetY = coordY;
+		if(coordX>=(int)width)
+			offsetX = coordX-width + 1;
+		if(coordY>=(int)depth)
+			offsetY = coordY-depth + 1;
+		moveMap(offsetX,offsetY);
+		coordX -= offsetX;
+		coordY -= offsetY;
+		
+	}
 	return std::pair<unsigned int,unsigned int> (coordX,coordY);
+}
+
+std::pair<float,float> HotSpots::worldToMatrixPos(unsigned int x,unsigned int y)
+{
+	float ret_x = center_x  -0.5*width*step + x*step;
+	float ret_y = center_y  -0.5*depth*step + y*step;
+	return std::pair<float,float>(ret_x,ret_y);
 }
 
 float HotSpots::getDistance(unsigned int,unsigned int)
@@ -36,14 +78,22 @@ float HotSpots::getDistance(int X1,int Y1,int X2,int Y2)
 }
 
 
-void HotSpots::resetGrid(float X, float Y, float step)
+void HotSpots::initGrid(float X, float Y, float step)
 {
 	this->step = step;
 	width = ceil(X/step);
 	depth = ceil(Y/step);
+	std::cerr << "depth: "<<depth<<std::endl;
 	scores.resize(width*depth);
 	for(int i = 0; i<width*depth; i++)
 		scores[i] = 0;
+}
+
+void HotSpots::setParameters(float hotSpotsRadius,float hotSpotsDecayRate,float hotSpotsConfidenceRadius)
+{
+	decayRate=hotSpotsDecayRate;
+	radius = hotSpotsRadius;
+	confRadius = hotSpotsConfidenceRadius;
 }
 HotSpots::HotSpots()
 {
@@ -51,9 +101,11 @@ HotSpots::HotSpots()
 	decayRate=0.5;
 	radius = 1.1;
 	confRadius = 1.0;
-
+center_x =0.0;
+center_y = 0.0;
 #ifdef DEBUG_HOTSPOTS_MAP
 	debugHotSpotsPublisher = nh.advertise<nav_msgs::OccupancyGrid>("debugSpots", 2);
+	debugPrint();
 #endif
 
 }
@@ -73,8 +125,8 @@ void HotSpots::debugPrint()
 	debugMap->info.resolution = step;
 	debugMap->info.width = width;
 	debugMap->info.height = depth;
-	debugMap->info.origin.position.x = -1.0* width*step/2.0;
-	debugMap->info.origin.position.y = -1.0 * depth*step/2.0;
+	debugMap->info.origin.position.x = center_x -1.0* width*step/2.0;
+	debugMap->info.origin.position.y = center_y -1.0 * depth*step/2.0;
 	debugMap->info.origin.position.z = 0;
 
 	debugMap->info.origin.orientation.x = 0;
@@ -117,18 +169,15 @@ float HotSpots::getConfidence()
 
 void HotSpots::generateBestMatch()
 {
-
-
-
 	float best1 = 0.0;
-	bestX = 0;
-	bestY = 0;
+	int best1X = 0;
+	int best1Y = 0;
 	for(int y = 0; y < depth; y++)
 		for(int x = 0; x < width; x++) {
 			if(getScore(x,y) > best1) {
 				best1 = getScore(x,y);
-				bestX = x;
-				bestY = y;
+				best1X = x;
+				best1Y = y;
 			}
 		}
 
@@ -138,7 +187,7 @@ void HotSpots::generateBestMatch()
 		for(int x = 0; x < width; x++) {
 
 			//std::cerr <<"dist: "<<getDistance(x,y,bestX,bestY)<<"  score: "<<getScore(x,y)<<std::endl;
-			if(getScore(x,y) > best2 && getDistance(x,y,bestX,bestY) >= confRadius) {
+			if(getScore(x,y) > best2 && getDistance(x,y,best1X,best1Y) >= confRadius) {
 				best2 = getScore(x,y);
 			}
 		}
@@ -146,7 +195,8 @@ void HotSpots::generateBestMatch()
 	float delta = best1 - best2;
 
 	bestConfidence = std::min(delta/1.0,1.0);
-	
+	bestX = center_x -1.0* width*step/2.0 +step*best1X;
+	bestY = center_y -1.0* depth*step/2.0 +step*best1Y;
 	std::cerr<<"confidence: "<<bestConfidence<<"  best1: "<<best1<<"  best2: "<<best2<<std::endl;
 
 }
@@ -190,7 +240,7 @@ ROS_INFO_STREAM("HotSpots: ??: "<<coords.first<<" "<<coords.second);
 		for(int x = minX; x <= maxX; x++) {
 			std::pair<unsigned int,unsigned int> coords_bis(x,y);
 			float distance = getDistance(coords.first,coords.second,coords_bis.first,coords_bis.second);
-			ROS_INFO_STREAM("Ho"<<distance);
+			
 			if(distance<radius) {
 
 				unsigned int ppp = matrixToArrayPos(coords_bis);

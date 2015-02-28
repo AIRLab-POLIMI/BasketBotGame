@@ -70,6 +70,8 @@ class Strategy
 	void applyStrategy();
 	void printDebugInfo();
 	void start_stop();
+	
+	void loadParameters();
 public:
 	Strategy(BasketBotBrain*,RosBrianBridge*);
 	void canestro();
