@@ -105,7 +105,7 @@ center_x =0.0;
 center_y = 0.0;
 #ifdef DEBUG_HOTSPOTS_MAP
 	debugHotSpotsPublisher = nh.advertise<nav_msgs::OccupancyGrid>("debugSpots", 2);
-	debugPrint();
+	//debugPrint();
 #endif
 
 }
@@ -163,7 +163,7 @@ std::pair<float,float> HotSpots::getBestMatch()
 
 float HotSpots::getConfidence()
 {
-	return 0; //temporaneo, da rimuovere TODO DAFARE CM
+	
 	return bestConfidence;
 }
 

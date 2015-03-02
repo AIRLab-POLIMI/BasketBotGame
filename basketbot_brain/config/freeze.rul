@@ -1,0 +1,4 @@
+
+(Frozen) =>  (&DEL.SpeedModule ANY)  (&DEL.RotSpeed ANY) ;
+(AND (DefrostTime) (NOT (PlayerVisible)))  => (RobotStatus EXPLORE);
+( AND (PlayerVisible) (DefrostTime)) => (RobotStatus NORMAL); 

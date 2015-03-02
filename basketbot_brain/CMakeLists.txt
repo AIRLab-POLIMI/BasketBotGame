@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
+set(CMAKE_BUILD_TYPE Debug)
+
 project(basketbot_brain)
 
 ## Find catkin macros and libraries

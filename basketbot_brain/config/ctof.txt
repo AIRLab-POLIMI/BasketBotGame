@@ -32,5 +32,6 @@
 (ProposedSpeedModule LINEARSPEED)
 
 (StateElapsed ELAPSEDTIME)
+(FreezeCountdown ELAPSEDTIME)
 (GoalAge ELAPSEDTIME)
 (AutoMode TRUE_FALSE)

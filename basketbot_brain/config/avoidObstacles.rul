@@ -5,8 +5,8 @@
 (AND (ProposedBackward) (AND (ObstacleRearLeft) (NOT(ObstacleRearRight)))) => (&DEL.RotSpeed ANY)(RotSpeed LEFT) (SpeedModule BACKWARD) ; 
 (AND (ProposedBackward) (AND (ObstacleRearRight) (NOT(ObstacleRearLeft)))) => (&DEL.RotSpeed ANY)(RotSpeed RIGHT) (SpeedModule BACKWARD) ; 
 
-(AND (ProposedForward) (AND (ObstacleFrontLeft) (NOT(ObstacleFrontRight)))) => (&DEL.RotSpeed ANY)(RotSpeed LEFT); 
-(AND (ProposedForward) (AND (ObstacleFrontRight) (NOT(ObstacleFrontLeft)))) => (&DEL.RotSpeed ANY)(RotSpeed RIGHT); 
+(AND (ProposedForward) (AND (ObstacleFrontLeft) (NOT(ObstacleFrontRight)))) => (&DEL.RotSpeed ANY)(RotSpeed RIGHT); 
+(AND (ProposedForward) (AND (ObstacleFrontRight) (NOT(ObstacleFrontLeft)))) => (&DEL.RotSpeed ANY)(RotSpeed LEFT); 
 
 
 (ObstacleRear) => (SpeedModule FORWARD);

@@ -12,7 +12,7 @@ class RosBrianBridge;
 class Strategy
 {
 	//roba della strategia
-	enum StrategyState {STOPPED,NONE,FREEZE,LAST_POSITION,STAY_AWAY,TILT_LEFT,TILT_RIGHT,RANDOM,PREVIOUS_STATE,THIS_STATE,GUESSED_POSITION,LATERALE_1,LATERALE_2,SCARTO_SINISTRA,SCARTO_DESTRA,AVVICINAMENTO_SINISTRA,AVVICINAMENTO_DESTRA,GIRO_DESTRA};
+	enum StrategyState {STOPPED,NONE,FREEZE,LAST_POSITION,STAY_AWAY,STAY_AWAY_SLOW,TILT_LEFT,TILT_RIGHT,RANDOM,PREVIOUS_STATE,THIS_STATE,GUESSED_POSITION,LATERALE_1,LATERALE_2,SCARTO_SINISTRA,SCARTO_DESTRA,AVVICINAMENTO_SINISTRA,AVVICINAMENTO_DESTRA,GIRO_DESTRA};
 	ros::NodeHandle nh;
 	ros::NodeHandle pnh;
 	ros::Timer timer;
@@ -34,8 +34,10 @@ class Strategy
 	bool userJustAppeared;
 	bool playerSlow;
 	bool userSeenAtLeastOnce;
-	bool canestroDuranteFreeze();
+	bool canestroDuranteFreeze;
 	bool sguardoFisso;
+	bool justUnfrozen;
+	
 	std::list<geometry_msgs::PointStamped> lastPlayerPositions;
 	geometry_msgs::PointStamped lastPlayerPos;
 	std::list<float> lastDistances;

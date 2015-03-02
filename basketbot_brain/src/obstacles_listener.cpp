@@ -77,6 +77,9 @@ char ObstaclesListener::getMapCost(float x,float y)
 	unsigned int robotXmap = coords.first;
 	unsigned int robotYmap = coords.second;
 	unsigned int cellnum = currentMap->info.width * (int) robotYmap + (int)robotXmap;
+	
+	
+	
 	char prob = currentMap->data[cellnum];
 	
 
@@ -98,7 +101,7 @@ char ObstaclesListener::getMapCost(float x,float y)
 float ObstaclesListener::rayTrace(float angle, float maxDistance)
 {
 	float maxCost = 0;
-	float distances[] = {0.6,0.8,1.0,1.2};
+	float distances[] = {0.6,0.8,1.0,1.2,1.0/maxDistance};
 	
 	for(int i = 0;i<sizeof(distances)/sizeof(distances[0]); i++ )
 	{
@@ -125,9 +128,14 @@ std::pair <unsigned int,unsigned int> ObstaclesListener::localToCostmapCoordinat
 	tf::Transform localTarget(tf::Quaternion(0,0,0,1),tf::Vector3(x,y,0));
 
 	tf::Transform target = mapTransform.inverse() * robotTransform * localTarget;
-	float robotXmap = target.getOrigin().x() / currentMap->info.resolution;
-	float robotYmap = target.getOrigin().y()/ currentMap->info.resolution;
+	unsigned int robotXmap = target.getOrigin().x() / currentMap->info.resolution;
+	unsigned int robotYmap = target.getOrigin().y()/ currentMap->info.resolution;
+	
+	if(robotXmap >= currentMap->info.width || robotYmap >= currentMap->info.height)
+		throw std::string("out of bounds");
+	
 	return std::pair <unsigned int,unsigned int> (robotXmap,robotYmap);
+
 
 }
 

@@ -6,6 +6,7 @@
 const unsigned int rate = 30;
 bool showBrianDebug = true;
 bool autoMode = true;
+float freezeTime = 1.5;
 bool BasketBotBrain::isVisible()
 {
 	return messenger->getPlayerPositionUnreliability()<playerNotVisibleThreshold;
@@ -58,7 +59,7 @@ void BasketBotBrain::runBrian()
 		if(stateDuration <= 0)
 			currentState = NORMAL;
 	}*/
-	bool debugPrints = showBrianDebug && timeThrottle.checkElapsedNamed("brianDebug",0.5);
+	bool debugPrints = showBrianDebug && timeThrottle.checkElapsedNamed("brianDebug",0.1);
 
 	generateObstaclesData();
 if(debugPrints)
@@ -75,8 +76,7 @@ if(debugPrints)
 	if(robotSpeeds.second == 0.0)
 		robotSpeeds.second = 0.01;
 	input["RobotLinearSpeed"] = robotSpeeds.first;
-
-
+	
 
 	input["RobotAngularSpeed"] = robotSpeeds.second;
 	input["PlayerDistance" ] = (messenger->getPlayerDistance() - distanceOffset) * distanceSensitivity;
@@ -93,8 +93,10 @@ if(debugPrints)
 	checkUnreliability();
 
 
-
-	input["StateElapsed"] = getCurrentStateElapsed();
+	float elapsed = getCurrentStateElapsed();
+	input["StateElapsed"] = elapsed;
+    if(currentState == FROZEN)
+		input["FreezeCountdown"] = freezeTime - elapsed;
 
 	if(debugPrints)
 		brian.setVerbosity(1);
@@ -119,11 +121,8 @@ if(debugPrints)
 		std::cerr<<"obstacle range: "<<obstaclesRadarDistance<<std::endl;
 
 	}
-	/*if(input["StateElapsed"] > 5.0 && currentState != NORMAL)
-	{
-		setState(NORMAL);
-		std::cerr <<"reset"<<std::endl;
-	}*/
+
+
 
 }
 
@@ -178,6 +177,8 @@ void BasketBotBrain::setParameter(std::string name, float value)
 		showBrianDebug = value>0.5;
 	else if(name == "autoMode")
 		autoMode= value>0.5;
+	else if(name == "freezeTime")
+		freezeTime= value;
 	else {
 		std::cerr<<"invalid brian parameter"<<std::endl;
 		exit(1);
