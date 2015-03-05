@@ -8,6 +8,7 @@
 (SuggestedAngularSpeed ANGULARSPEED)
 
 (DebugFlag TRUE_FALSE)
+(SlowRotation TRUE_FALSE)
 
 (PlayerVelocityX PLAYERSPEEDRADIAL)
 (PlayerVelocityY ANGULARSPEED)

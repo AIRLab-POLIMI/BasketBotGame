@@ -4,9 +4,10 @@
 #include "RosBrianBridge.h"
 
 const unsigned int rate = 30;
-bool showBrianDebug = true;
+float brianDebugInterval = 0.5;
 bool autoMode = true;
 float freezeTime = 1.5;
+float slowRotation = 0.0;
 bool BasketBotBrain::isVisible()
 {
 	return messenger->getPlayerPositionUnreliability()<playerNotVisibleThreshold;
@@ -59,7 +60,7 @@ void BasketBotBrain::runBrian()
 		if(stateDuration <= 0)
 			currentState = NORMAL;
 	}*/
-	bool debugPrints = showBrianDebug && timeThrottle.checkElapsedNamed("brianDebug",0.1);
+	bool debugPrints = brianDebugInterval > 0 && timeThrottle.checkElapsedNamed("brianDebug",brianDebugInterval);
 
 	generateObstaclesData();
 if(debugPrints)
@@ -69,6 +70,7 @@ if(debugPrints)
 
 	RosBrianBridge::Goal goal = messenger->getGoal();
 	input["AutoMode"] = autoMode?1.0:0;
+	input["SlowRotation"] = slowRotation;
 	input["GoalDistance"] = goal.distance;
 	input["GoalAngle"] = goal.angle;
 	input["GoalAge"] = goal.age;
@@ -173,12 +175,14 @@ void BasketBotBrain::setParameter(std::string name, float value)
 		orientationOffset = value;
 	else if(name == "obstaclesRadarDistance")
 		obstaclesRadarDistance = value;
-	else if(name == "brianDebug")
-		showBrianDebug = value>0.5;
+	else if(name == "brianDebugInterval")
+		brianDebugInterval = value;
 	else if(name == "autoMode")
 		autoMode= value>0.5;
 	else if(name == "freezeTime")
 		freezeTime= value;
+	else if(name == "slowRotation")
+		slowRotation= value;
 	else {
 		std::cerr<<"invalid brian parameter"<<std::endl;
 		exit(1);
@@ -201,7 +205,7 @@ void BasketBotBrain::freeze(float seconds)
 {
 //	stateDuration = ros::Duration(seconds);
 	setState(FROZEN,seconds);
-
+    latestStateChange = ros::Time::now();
 
 }
 

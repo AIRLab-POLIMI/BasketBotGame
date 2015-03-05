@@ -225,11 +225,17 @@ void FaceDetector::filterFacesByDepthInternal(cv::Mat depth,std::vector<cv::Rect
 	std::swap(faces_distances_tmp,faces_distances);
 }
 
-
+void FaceDetector::setFaceLimits(float min_front,float max_front,float min_profile,float max_profile)
+{
+	min_front_size = min_front;
+	max_front_size = max_front;
+	min_profile_size = min_profile;
+	max_profile_size = max_profile;
+}
 void FaceDetector::filterFacesByDepth(cv::Mat depth)
 {
-	filterFacesByDepthInternal(depth,faces_profile,faces_profile_distances,85,105);
-	filterFacesByDepthInternal(depth,faces_front,faces_front_distances,75,95);
+	filterFacesByDepthInternal(depth,faces_profile,faces_profile_distances,min_profile_size,max_profile_size);
+	filterFacesByDepthInternal(depth,faces_front,faces_front_distances,min_front_size,max_front_size);
 }
 
 std::vector<int> FaceDetector::extractHumans(cv::Mat users)

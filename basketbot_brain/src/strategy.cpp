@@ -13,15 +13,20 @@ double defaultPlayerSpeedSensitivity = 0.2;
 double obstaclesRadarDecayRate = 0.9;
 double minSlowThresh = 0.4;
 double maxSlowThresh = 0.5;
-float minDistErrorThresh = 0.4;
-float maxDistErrorThresh = 0.5;
-
+double minDistErrorThresh = 0.4;
+double maxDistErrorThresh = 0.5;
+double tiltOrientationOffset = 0.2;
+double lateralOrientationOffset= 0.3;
 bool strategia_anti_annoiamento = false;
 bool autoStart = true;
 bool justFollow = false;
 
-float ds_const = 2.0;
-
+double distanceOffsetIncrement = 3.0;
+double distanceOffsetDecrement = 0.7;
+double distanceSensitivityIncrement = 2.0;
+bool mapFirst = false;
+std::string throwPoseName = "tiro";
+std::string startPose = "";
 static void die(std::string message)
 {
 	std::cerr << message << std::endl;
@@ -41,9 +46,19 @@ void Strategy::loadParameters()
 	GET_PARAM("obstacles_radar_increment", obstaclesRadarIncrement);
 	GET_PARAM("min_slow_threshold", minSlowThresh);
 	GET_PARAM("max_slow_threshold", maxSlowThresh);
+	GET_PARAM("min_distance_error_threshold", minDistErrorThresh);
+	GET_PARAM("max_distance_error_threshold", maxDistErrorThresh);
+	GET_PARAM("distance_sensitivity_increment", distanceSensitivityIncrement);
 	GET_PARAM("player_speed_sensitivity", defaultPlayerSpeedSensitivity);
+	GET_PARAM("tilt_orientation_offset", tiltOrientationOffset);
+	GET_PARAM("lateral_orientation_offset", lateralOrientationOffset);
+	GET_PARAM("distance_offset_increment", distanceOffsetIncrement);
+	GET_PARAM("distance_offset_decrement", distanceOffsetDecrement);
 	GET_PARAM("auto_start", autoStart);
 	GET_PARAM("just_follow", justFollow);
+	GET_PARAM("map_first", mapFirst);
+	GET_PARAM("throw_pose_name",throwPoseName);
+	GET_PARAM("start_pose",startPose);
 	GET_PARAM("keep_player_active", strategia_anti_annoiamento);
 	GET_PARAM("obstacles_radar_decay_rate", obstaclesRadarDecayRate);
 	double hotSpotsWidth = 25, hotSpotsHeight = 25, hotSpotsStep = 0.2;
@@ -61,9 +76,9 @@ void Strategy::loadParameters()
 	double freezeTime = 1.5;
 	GET_PARAM("freeze_time", freezeTime);
 	brain->setParameter("freezeTime", freezeTime);
-	bool brian_debug = false;
-	GET_PARAM("brian_debug", brian_debug);
-	brain->setParameter("brianDebug", brian_debug ? 1.0 : 0.0);
+	double brian_debug = 0;
+	GET_PARAM("brian_debug_interval", brian_debug);
+	brain->setParameter("brianDebugInterval", brian_debug);
 
 	bool auto_mode = true;
 	GET_PARAM("auto_mode", auto_mode);
@@ -80,6 +95,15 @@ void Strategy::loadParameters()
 	brain->setParameter("outputSnappiness", output_snappiness);
 }
 #undef GET_PARAM
+
+void Strategy::poseDetected(std::string poseName)
+{
+	if(poseName==throwPoseName)
+		brain->freeze(5.0);
+	if(strategyState == STOPPED && (poseName == startPose || startPose == ""))
+		autoStart = true;
+}
+
 Strategy::Strategy(BasketBotBrain* brain, RosBrianBridge* bridge)
 	: nh()
 	, pnh("~")
@@ -99,10 +123,9 @@ Strategy::Strategy(BasketBotBrain* brain, RosBrianBridge* bridge)
 	justUnfrozen = false;
 	
 	brainState = brain->getState();
-	if(!autoStart)
-		setStrategyState(STOPPED);
-	else
-		setStrategyState(NONE);
+	
+	setStrategyState(STOPPED);
+	
 }
 
 bool Strategy::isPlayerSlow()
@@ -458,13 +481,16 @@ void Strategy::setStrategyState(StrategyState newState)
 		brain->setParameter("orientationOffset", 0);
 		brain->setParameter("distanceOffset", defaultDistanceOffset);
 		float ds = brain->getParameter("distanceSensitivity");
-		brain->setParameter("distanceSensitivity", ds / ds_const);
+		brain->setParameter("distanceSensitivity", ds / distanceSensitivityIncrement);
 	}
 	if(oldStrategyState == SCARTO_DESTRA) {
 		brain->setParameter("orientationOffset", 0);
 		brain->setParameter("distanceOffset", defaultDistanceOffset);
 		float ds = brain->getParameter("distanceSensitivity");
-		brain->setParameter("distanceSensitivity", ds / ds_const);
+		brain->setParameter("distanceSensitivity", ds / distanceSensitivityIncrement);
+	}
+	if(oldStrategyState == SLOW_ROTATION) {
+		brain->setParameter("slowRotation",0.0);
 	}
 	if(oldStrategyState == AVVICINAMENTO_SINISTRA) {
 		brain->setParameter("orientationOffset", 0);
@@ -477,43 +503,46 @@ void Strategy::setStrategyState(StrategyState newState)
 
 	if(newState == SCARTO_SINISTRA) {
 		if(lastPrediction.velocity.y > 0)
-			brain->setParameter("orientationOffset", 0.3);
-		brain->setParameter("distanceOffset", defaultDistanceOffset * 3.0);
+			brain->setParameter("orientationOffset", lateralOrientationOffset);
+		brain->setParameter("distanceOffset", defaultDistanceOffset * distanceOffsetIncrement);
 		float ds = brain->getParameter("distanceSensitivity");
-		brain->setParameter("distanceSensitivity", ds * ds_const);
+		brain->setParameter("distanceSensitivity", ds * distanceSensitivityIncrement);
+	}
+		if(newState == SLOW_ROTATION) {
+		brain->setParameter("slowRotation",1.0);
 	}
 	if(newState == SCARTO_DESTRA) {
 		if(lastPrediction.velocity.y < 0)
-			brain->setParameter("orientationOffset", -0.3);
-		brain->setParameter("distanceOffset", defaultDistanceOffset * 3.0);
+			brain->setParameter("orientationOffset", -lateralOrientationOffset);
+		brain->setParameter("distanceOffset", defaultDistanceOffset * distanceOffsetIncrement);
 		float ds = brain->getParameter("distanceSensitivity");
-		brain->setParameter("distanceSensitivity", ds * ds_const);
+		brain->setParameter("distanceSensitivity", ds * distanceSensitivityIncrement);
 	}
 	if(newState == AVVICINAMENTO_SINISTRA) {
-		brain->setParameter("orientationOffset", -0.3);
-		brain->setParameter("distanceOffset", defaultDistanceOffset * 0.7);
+		brain->setParameter("orientationOffset", -lateralOrientationOffset);
+		brain->setParameter("distanceOffset", defaultDistanceOffset * distanceOffsetDecrement);
 	}
 	if(newState == AVVICINAMENTO_DESTRA) {
-		brain->setParameter("orientationOffset", 0.3);
-		brain->setParameter("distanceOffset", defaultDistanceOffset * 0.7);
+		brain->setParameter("orientationOffset", lateralOrientationOffset);
+		brain->setParameter("distanceOffset", defaultDistanceOffset * distanceOffsetDecrement);
 	}
 
 	if(newState == TILT_LEFT) {
-		brain->setParameter("orientationOffset", 0.2);
+		brain->setParameter("orientationOffset", tiltOrientationOffset);
 	}
 	if(newState == TILT_RIGHT) {
-		brain->setParameter("orientationOffset", -0.2);
+		brain->setParameter("orientationOffset", -tiltOrientationOffset);
 	}
 	if(newState == STAY_AWAY || newState == STAY_AWAY_SLOW) {
-		brain->setParameter("distanceOffset", defaultDistanceOffset * 2.0);
+		brain->setParameter("distanceOffset", defaultDistanceOffset * distanceOffsetIncrement);
 	}
 
 	if(newState == LATERALE_1) {
-		brain->setParameter("orientationOffset", -0.2);
-		brain->setParameter("distanceOffset", defaultDistanceOffset * 2.0);
+		brain->setParameter("orientationOffset", -tiltOrientationOffset);
+		brain->setParameter("distanceOffset", defaultDistanceOffset * distanceOffsetIncrement);
 	}
 	if(newState == LATERALE_2) {
-		brain->setParameter("orientationOffset", 0.2);
+		brain->setParameter("orientationOffset", tiltOrientationOffset);
 	}
 	if(newState == FREEZE) {
 		processEvent("freeze", 1.0);
@@ -550,8 +579,17 @@ void Strategy::applyStrategy()
 
 	case STOPPED:
 		brain->freeze(5000);
+		if(autoStart)
+		setStrategyState(SLOW_ROTATION);
 		break;
-
+	case SLOW_ROTATION:
+	brain->freeze(5000);
+	if(!mapFirst)
+		setStrategyState(NONE);
+	if(elapsedFromStrategyChange() > 10)
+		setStrategyState(NONE);
+	
+	break;
 	case NONE:
 		if(!brain->isVisible())
 			break;

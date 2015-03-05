@@ -9,6 +9,6 @@
 ( level 2 suggestions 	suggestedSpeed.rul )
 ( level 2 RobotStatus 	RobotStatus.rul )
 ( level 2 Freeze 	freeze.rul )
-
+( level 2 SlowRotation SlowRotation.rul )
  ( level 3 avoidObstacles avoidObstacles.rul )
  ( level 3 EmergencyStop 	EmergencyStop.rul )

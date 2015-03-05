@@ -37,9 +37,8 @@ void RosBrianBridge::setSpeed(float v, float rot)
 
 void RosBrianBridge::userPoseCallback(const userpose_recognition::UserPoseConstPtr & msg)
 {
-	std::cerr << "rilevata posa: "<<msg->poseName<<std::endl;
-	if(msg->poseName==throwPoseName)
-		brain.freeze(5.0);
+	ROS_DEBUG_STREAM( "rilevata posa: "<<msg->poseName);
+	strategy.poseDetected(msg->poseName);
 
 }
 
@@ -64,7 +63,6 @@ RosBrianBridge::RosBrianBridge():node(),pnh("~"),brain(this,brian_config_path),s
 {
 	maxSpeed = 0.70;
     maxRotSpeed = 0.70;
-	throwPoseName = "tiro";
 	commandsPublisher = node.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
 	commandsPublisherTiltone = node.advertise<r2p::Velocity>("/tiltone/Velocity", 10);
 	
@@ -81,7 +79,7 @@ RosBrianBridge::RosBrianBridge():node(),pnh("~"),brain(this,brian_config_path),s
 	currentUnreliability = 10000.0;
 	GET_PARAM("max_speed",maxSpeed);
 	GET_PARAM("max_rot_speed",maxRotSpeed);
-	GET_PARAM("throw_pose_name",throwPoseName);
+	
 }
 #undef GET_PARAM
 void RosBrianBridge::desiredCmdVelJoyCallback(const r2p::Velocity::ConstPtr& msg)

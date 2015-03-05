@@ -63,6 +63,7 @@ class FaceRecognitionBridge
 	ros::Publisher humansPublisher;
 	ros::Publisher facesPublisher;
 	ros::NodeHandle nh;
+	ros::NodeHandle pnh;
 	image_transport::ImageTransport it;
 	message_filters::Subscriber<Image> image_sub;
 	message_filters::Subscriber<CameraInfo> image_info_sub;
@@ -135,8 +136,16 @@ void FaceRecognitionBridge::connectCb()
 
 	}*/
 }
-
-FaceRecognitionBridge::FaceRecognitionBridge():nh(ros::NodeHandle()),it(nh),
+static void die(std::string message)
+{
+	std::cerr << message << std::endl;
+	ros::shutdown();
+	exit(1);
+}
+#define GET_PARAM(x, y)     \
+	if(!pnh.getParam(x, y)) \
+		die("missing param" x)
+FaceRecognitionBridge::FaceRecognitionBridge():nh(ros::NodeHandle()),pnh("~"),it(nh),
 	users_sub(nh, "users",2),
 	image_sub(nh, "/camera/rgb/image_raw", 2),
 	image_info_sub(nh, "/camera/rgb/camera_info", 2),
@@ -149,10 +158,16 @@ FaceRecognitionBridge::FaceRecognitionBridge():nh(ros::NodeHandle()),it(nh),
 	face_pub = it.advertise("faces", 1,itssc,itssc);
 	humansPublisher = nh.advertise<nite_tracker::HumansData>("humans",10,rssc,rssc);
 	sync.registerCallback(boost::bind(&FaceRecognitionBridge::callback,this, _1, _2,_3,_4));
-
+	
+	double min_front,max_front,min_profile,max_profile;
+	GET_PARAM("min_front_size",min_front);
+	GET_PARAM("max_front_size",max_front);
+	GET_PARAM("min_profile_size",min_profile);
+	GET_PARAM("max_profile_size",max_profile);
+	faceDetector.setFaceLimits(min_front,max_front,min_profile,max_profile);
 	active = 0;
 }
-
+#undef GET_PARAM
 
 void FaceRecognitionBridge::callbackThread(const ImageConstPtr& image_msg, const CameraInfoConstPtr& _cam_info, const ImageConstPtr& depth_msg,const ImageConstPtr& users_msg)
 {

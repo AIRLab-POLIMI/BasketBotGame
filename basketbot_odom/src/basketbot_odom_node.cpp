@@ -4,7 +4,7 @@
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
 #include <boost/math/constants/constants.hpp>
-
+#include <geometry_msgs/TwistStamped.h>
 class BasketbotOdom
 {
 	double x;
@@ -21,6 +21,7 @@ class BasketbotOdom
 	ros::Subscriber encoderSubscriber;
 	ros::Subscriber tiltSubscriber;
 	ros::Subscriber velocitySubscriber;
+	ros::Subscriber simOdomSubscriber;
 	ros::Time lastOdomTime;
 	ros::Timer timer;
 	ros::Time lastVelocityMessage;
@@ -34,6 +35,8 @@ class BasketbotOdom
 	void encoderCallback(r2p::Velocity::ConstPtr );
 	void tiltCallback(tiltone::Tilt::ConstPtr );
 	void velocityCallback(r2p::Velocity::ConstPtr velMsg);
+	void simEncoderCallback(geometry_msgs::TwistStamped::ConstPtr sim_vel);
+
 public:
 	BasketbotOdom();
 };
@@ -132,6 +135,14 @@ void BasketbotOdom::velocityCallback(r2p::Velocity::ConstPtr velMsg)
 	tiltoneVelocityPublisher.publish(velMsg);
 	lastVelocityMessage = ros::Time::now();
 }
+void BasketbotOdom::simEncoderCallback(geometry_msgs::TwistStamped::ConstPtr sim_vel)
+{
+	r2p::Velocity::Ptr velMsg(new r2p::Velocity() );
+	velMsg->x = sim_vel->twist.linear.x;
+	velMsg->w = sim_vel->twist.angular.z;
+	//encoderCallback(velMsg);
+}
+
 
 void BasketbotOdom::encoderCallback(r2p::Velocity::ConstPtr velMsg)
 {
@@ -174,6 +185,7 @@ BasketbotOdom::BasketbotOdom()
 	tiltSubscriber = nh.subscribe("/tiltone/tilt", 1,&BasketbotOdom::tiltCallback,this );
 	lastOdomTime = ros::Time::now();
 	velocitySubscriber = nh.subscribe("/tiltone/Velocity", 1,&BasketbotOdom::velocityCallback,this );
+	simOdomSubscriber = nh.subscribe("/e2/twist",1,&BasketbotOdom::simEncoderCallback,this);
 	x = y = th = 0;
 	vx = vy = vth = 0;
 	tilt = 0;

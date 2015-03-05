@@ -41,7 +41,7 @@ public:
 	//Params:
 	double maxSpeed;
 	double maxRotSpeed;
-	std::string throwPoseName;
+	
 	
 	
 	

@@ -1,5 +1,5 @@
 <launch>
-<include file="$(find basketbot_mapping)/launch/costmap.launch" />
-<include file="$(find basketbot_mapping)/launch/slam.launch" />
+<include file="$(find basketbot_launch)/launch/mapping/costmap.launch" />
+<include file="$(find basketbot_launch)/launch/mapping/slam.launch" />
 
 </launch>
