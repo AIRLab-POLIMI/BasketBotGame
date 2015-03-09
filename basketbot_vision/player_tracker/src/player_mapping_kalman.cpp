@@ -55,13 +55,14 @@ void playerEKF::makeA()
 	A(1,4) = 0;
 	A(1,5) = periodT;
 
-	A(2,1) = 0;
-	A(2,2) = 1;
+	A(2,1) = -u(1)*sin(x(2)) * periodT/(x(1)*x(1));
+	A(2,2) = 1 +u(1)*cos(x(2)) * periodT/x(1); //EMERGENZA!
 	A(2,3) = periodT;
 	A(2,4) = 0;
 	A(2,5) = 0;
 
-	A(3,1) = -x(4)* x(5)/(x(1)*x(1));
+	A(3,1) = -x(4)* x(5)/(x(1)*x(1)); //EMERGENZA!
+	A(3,1) = -x(4)/(x(1)*x(1));
 	A(3,2) = 0;
 	A(3,3) = 0;
 	A(3,4) = 1/x(1);
@@ -107,7 +108,7 @@ void playerEKF::makeProcess()
 
 	Vector x_(x.size());
 	x_(1) = x(1) + x(5)*periodT  -u(1)*cos(x(2))*periodT; //rho
-	x_(2) = x(2) + x(3) * periodT - u(2) * periodT;      //alpha
+	x_(2) = x(2) + x(3) * periodT - u(2) * periodT  +u(1)*sin(x(2)) * periodT/x(1);      //alpha
 	x_(3) = x(4) / x(1);        //omega
 	x_(4) = x(4) ;				//vtang
 	x_(5) = x(5);				//vradiale

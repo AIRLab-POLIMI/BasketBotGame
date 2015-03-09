@@ -1,6 +1,6 @@
 (DISTANCE
  (TOL (NEAR -0.5 0))
- (TRI (MEDIUM -1 0 1 ))
+ (TRI (MEDIUM -0.5 0 1 ))
  (TOR (FAR 0 1))
 )
 
