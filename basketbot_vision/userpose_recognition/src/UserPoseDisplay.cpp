@@ -65,10 +65,9 @@ cv::Mat UserPoseDisplay::generateImage(UserPoseData & upd,cv::Size size)
 	return skeletonImage;
 
 }
-void UserPoseDisplay::showTransforms(UserPoseData & upd)
+cv::Mat UserPoseDisplay::showTransforms(UserPoseData & upd)
 {
-	if(!ready)
-		return;
+
 	boost::lock_guard<boost::mutex> lock(m_mutex);
 
 	baseImage.copyTo(image);
@@ -85,7 +84,10 @@ void UserPoseDisplay::showTransforms(UserPoseData & upd)
 
 	cv::Mat skIm = generateImage(upd,image.size());
 	image+=skIm;
-	imshow(WINDOW_NAME,image);
+	if(ready)
+		imshow(WINDOW_NAME,image);
+		return image;
+	
 }
 void UserPoseDisplay::spinOnce()
 {

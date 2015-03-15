@@ -4,7 +4,7 @@ project(userpose_recognition)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED roscpp geometry_msgs tf message_generation roslib)
+find_package(catkin REQUIRED roscpp geometry_msgs tf message_generation roslib image_transport cv_bridge)
 find_package(OpenCV REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(YAML REQUIRED yaml-cpp)

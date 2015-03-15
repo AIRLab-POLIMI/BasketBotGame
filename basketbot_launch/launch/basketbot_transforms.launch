@@ -1,7 +1,7 @@
 <launch>
 <!-- questo gestisce odometria -->
 <node pkg="basketbot_odom" type="basketbot_odom_node" name="basketbot_odom">
-
+<rosparam command="load" file="$(find basketbot_launch)/conf/basketbot_odom.conf" />
 </node>
 
 <node pkg="tf" type="static_transform_publisher" name="stabilized_broadcaster" args="0 0 0.2 0 0 0 base_footprint base_stabilized 30" />

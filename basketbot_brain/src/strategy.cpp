@@ -113,7 +113,7 @@ Strategy::Strategy(BasketBotBrain* brain, RosBrianBridge* bridge)
 {
 	goalPublisher = nh.advertise<geometry_msgs::PoseStamped>("/brain/goal", 10);
 	predictionSubscriber = nh.subscribe("PosPrediction", 2, &Strategy::predictionCallback, this);
-	
+
 	loadParameters();
 
 	timer = nh.createTimer(ros::Duration(1.0 / 10.0), &Strategy::strategyLoop, this);
@@ -121,11 +121,11 @@ Strategy::Strategy(BasketBotBrain* brain, RosBrianBridge* bridge)
 
 	userSeenAtLeastOnce = false;
 	justUnfrozen = false;
-	
+
 	brainState = brain->getState();
-	
+
 	setStrategyState(STOPPED);
-	
+
 }
 
 bool Strategy::isPlayerSlow()
@@ -304,7 +304,10 @@ bool Strategy::isEventRelevant(std::string eventName, float eventSize)
 
 	return false;
 }
-
+void Strategy::endGameCallback(const ros::TimerEvent& event)
+{
+	processEvent("end_game",canestri);
+}
 void Strategy::processEvent(std::string eventName, float eventSize)
 {
 	// ROS_INFO_STREAM_THROTTLE_NAMED(1,eventName,"EVENT: "<<eventName<<"\t"<<eventSize);
@@ -319,10 +322,15 @@ void Strategy::processEvent(std::string eventName, float eventSize)
 		if(eventSize > maxSlowThresh && playerSlow) { // player fast
 			ROS_INFO_STREAM("player fast \t" << eventSize);
 			playerSlow = false;
-		
-		}
 
-	} else if(eventName == "distance_error") {
+		}
+	} else if(eventName == "end_game") {
+		setStrategyState(STOPPED);
+
+
+	}
+
+	else if(eventName == "distance_error") {
 
 		if(eventSize > maxDistErrorThresh) {
 			float ds = brain->getParameter("distanceSensitivity");
@@ -365,7 +373,7 @@ void Strategy::processEvent(std::string eventName, float eventSize)
 		}
 		// controlla se e' stato fatto un canestro oppure no
 	} else if(eventName == "canestro") {
-
+		canestri++;
 		if(strategyState == FREEZE) {
 			ROS_INFO_STREAM("canestro atteso");
 			canestroDuranteFreeze = true;
@@ -491,6 +499,9 @@ void Strategy::setStrategyState(StrategyState newState)
 	}
 	if(oldStrategyState == SLOW_ROTATION) {
 		brain->setParameter("slowRotation",0.0);
+
+
+
 	}
 	if(oldStrategyState == AVVICINAMENTO_SINISTRA) {
 		brain->setParameter("orientationOffset", 0);
@@ -500,7 +511,10 @@ void Strategy::setStrategyState(StrategyState newState)
 		brain->setParameter("orientationOffset", 0);
 		brain->setParameter("distanceOffset", defaultDistanceOffset);
 	}
-
+	if(oldStrategyState == PARTENZA)
+	{
+		finePartitaTimer = nh.createTimer(ros::Duration(60*5),&Strategy::endGameCallback,this,true);
+	}
 	if(newState == SCARTO_SINISTRA) {
 		if(lastPrediction.velocity.y > 0)
 			brain->setParameter("orientationOffset", lateralOrientationOffset);
@@ -508,7 +522,7 @@ void Strategy::setStrategyState(StrategyState newState)
 		float ds = brain->getParameter("distanceSensitivity");
 		brain->setParameter("distanceSensitivity", ds * distanceSensitivityIncrement);
 	}
-		if(newState == SLOW_ROTATION) {
+	if(newState == SLOW_ROTATION) {
 		brain->setParameter("slowRotation",1.0);
 	}
 	if(newState == SCARTO_DESTRA) {
@@ -526,7 +540,10 @@ void Strategy::setStrategyState(StrategyState newState)
 		brain->setParameter("orientationOffset", lateralOrientationOffset);
 		brain->setParameter("distanceOffset", defaultDistanceOffset * distanceOffsetDecrement);
 	}
-
+	if(newState == PARTENZA) {
+		canestri=0;
+		
+	}
 	if(newState == TILT_LEFT) {
 		brain->setParameter("orientationOffset", tiltOrientationOffset);
 	}
@@ -566,30 +583,34 @@ void Strategy::applyStrategy()
 
 	bool slow = isPlayerSlow();
 	ROS_DEBUG_STREAM("slow: " << slow);
-	if(justUnfrozen)
-	{
+	if(justUnfrozen) {
 		//setStrategyState(NONE);
-		
-		
+
+
 		justUnfrozen = false;
-		
+
 	}
-	
+
 	switch(strategyState) {
 
 	case STOPPED:
 		brain->freeze(5000);
 		if(autoStart)
-		setStrategyState(SLOW_ROTATION);
+			setStrategyState(SLOW_ROTATION);
 		break;
 	case SLOW_ROTATION:
-	brain->freeze(5000);
-	if(!mapFirst)
+		brain->freeze(5000);
+		if(!mapFirst)
+			setStrategyState(PARTENZA);
+		if(elapsedFromStrategyChange() > 10)
+			setStrategyState(PARTENZA);
+
+		break;
+
+	case PARTENZA:
 		setStrategyState(NONE);
-	if(elapsedFromStrategyChange() > 10)
-		setStrategyState(NONE);
-	
-	break;
+
+		break;
 	case NONE:
 		if(!brain->isVisible())
 			break;
@@ -608,19 +629,18 @@ void Strategy::applyStrategy()
 		}
 		if(elapsedFromStrategyChange() > 3.0 && !slow) {
 			int rn = rand() % 3;
-			if(sguardoFisso || rn == 0)
-			{
+			if(sguardoFisso || rn == 0) {
 				setStrategyState(STAY_AWAY);
 				break;
 			}
-			
+
 			if(lastPrediction.velocity.y > 0)
 				setStrategyState(SCARTO_SINISTRA);
 			else
 				setStrategyState(SCARTO_DESTRA);
 			break;
 		}
-		
+
 		break;
 
 	case SCARTO_SINISTRA:
@@ -634,8 +654,7 @@ void Strategy::applyStrategy()
 			setStrategyState(AVVICINAMENTO_DESTRA);
 		}
 		break;
-	case AVVICINAMENTO_SINISTRA:
-	{
+	case AVVICINAMENTO_SINISTRA: {
 		if(elapsedFromStrategyChange() < 3.0)
 			break;
 		int rn = rand() % 3;
@@ -645,9 +664,8 @@ void Strategy::applyStrategy()
 		}
 		setStrategyState(SCARTO_SINISTRA);
 	}
-		break;
-	case AVVICINAMENTO_DESTRA:
-	{
+	break;
+	case AVVICINAMENTO_DESTRA: {
 		if(elapsedFromStrategyChange() < 3.0)
 			break;
 		int rn = rand() % 3;
@@ -658,90 +676,90 @@ void Strategy::applyStrategy()
 		setStrategyState(SCARTO_DESTRA);
 	}
 	break;
-case GIRO_DESTRA:
-	publishGoalRelative(-1, 0.5);
-	if(elapsedFromStrategyChange() > 3.0) {
+	case GIRO_DESTRA:
+		publishGoalRelative(-1, 0.5);
+		if(elapsedFromStrategyChange() > 3.0) {
 
-		setStrategyState(PREVIOUS_STATE);
-	}
-	break;
-	case STAY_AWAY_SLOW:
-	if(elapsedFromStrategyChange() > 0.5 && !slow) {
-		ROS_INFO_STREAM("Ehi, Wait!");
-		setStrategyState(NONE);
+			setStrategyState(PREVIOUS_STATE);
+		}
 		break;
-	}
-case STAY_AWAY:
-	
-	if(elapsedFromStrategyChange() > 4.0) {
-		ROS_INFO_STREAM("I'm bored");
-		setStrategyState(NONE);
-	}
-	break;
-case TILT_LEFT:
-	if(elapsedFromStrategyChange() > 0.5 && !slow)
-		setStrategyState(NONE);
-	else if(elapsedFromStrategyChange() > 2.0 && slow)
-		setStrategyState(TILT_RIGHT);
+	case STAY_AWAY_SLOW:
+		if(elapsedFromStrategyChange() > 0.5 && !slow) {
+			ROS_INFO_STREAM("Ehi, Wait!");
+			setStrategyState(NONE);
+			break;
+		}
+	case STAY_AWAY:
 
-	break;
-case TILT_RIGHT:
-	if(elapsedFromStrategyChange() > 0.5 && !slow)
-		setStrategyState(NONE);
-	else if(elapsedFromStrategyChange() > 1.0 && rand() % 10 == 0)
-		setStrategyState(NONE);
-	else if(elapsedFromStrategyChange() > 2.0 && slow)
-		setStrategyState(TILT_LEFT);
+		if(elapsedFromStrategyChange() > 4.0) {
+			ROS_INFO_STREAM("I'm bored");
+			setStrategyState(NONE);
+		}
+		break;
+	case TILT_LEFT:
+		if(elapsedFromStrategyChange() > 0.5 && !slow)
+			setStrategyState(NONE);
+		else if(elapsedFromStrategyChange() > 2.0 && slow)
+			setStrategyState(TILT_RIGHT);
 
-	break;
-case LATERALE_1:
-	if(elapsedFromStrategyChange() > 0.5 && !slow)
-		setStrategyState(NONE);
-	else if(elapsedFromStrategyChange() > 2.0 && slow)
-		setStrategyState(LATERALE_2);
+		break;
+	case TILT_RIGHT:
+		if(elapsedFromStrategyChange() > 0.5 && !slow)
+			setStrategyState(NONE);
+		else if(elapsedFromStrategyChange() > 1.0 && rand() % 10 == 0)
+			setStrategyState(NONE);
+		else if(elapsedFromStrategyChange() > 2.0 && slow)
+			setStrategyState(TILT_LEFT);
 
-	break;
-case LATERALE_2:
-	if(elapsedFromStrategyChange() > 0.5 && !slow)
-		setStrategyState(NONE);
-	else if(elapsedFromStrategyChange() > 2.0 && slow)
-		setStrategyState(LATERALE_1);
-	break;
-case LAST_POSITION:
-	if((ros::Time::now() - lastPlayerPos.header.stamp).toSec() < 10.0) {
-		publishGoalAbsolute(lastPlayerPos.point.x, lastPlayerPos.point.y);
-		std::cerr << "X: " << lastPlayerPos.point.x << "   Y:  " << lastPlayerPos.point.y << std::endl;
-	} else if(elapsedFromStrategyChange() > 1.0) {
-		if(hotSpotsReturningVisible.getConfidence() > 0.5)
-			setStrategyState(GUESSED_POSITION);
-		else
-			setStrategyState(RANDOM);
-	}
-	break;
+		break;
+	case LATERALE_1:
+		if(elapsedFromStrategyChange() > 0.5 && !slow)
+			setStrategyState(NONE);
+		else if(elapsedFromStrategyChange() > 2.0 && slow)
+			setStrategyState(LATERALE_2);
 
-case GUESSED_POSITION: {
+		break;
+	case LATERALE_2:
+		if(elapsedFromStrategyChange() > 0.5 && !slow)
+			setStrategyState(NONE);
+		else if(elapsedFromStrategyChange() > 2.0 && slow)
+			setStrategyState(LATERALE_1);
+		break;
+	case LAST_POSITION:
+		if((ros::Time::now() - lastPlayerPos.header.stamp).toSec() < 10.0) {
+			publishGoalAbsolute(lastPlayerPos.point.x, lastPlayerPos.point.y);
+			std::cerr << "X: " << lastPlayerPos.point.x << "   Y:  " << lastPlayerPos.point.y << std::endl;
+		} else if(elapsedFromStrategyChange() > 1.0) {
+			if(hotSpotsReturningVisible.getConfidence() > 0.5)
+				setStrategyState(GUESSED_POSITION);
+			else
+				setStrategyState(RANDOM);
+		}
+		break;
+
+	case GUESSED_POSITION: {
 		std::pair<float, float> posit = hotSpotsReturningVisible.getBestMatch();
 		publishGoalAbsolute(posit.first, posit.second);
 		if(elapsedFromStrategyChange() > 4.0)
 			setStrategyState(RANDOM);
 		break;
 	}
-case RANDOM:
-	if(!userSeenAtLeastOnce)
+	case RANDOM:
+		if(!userSeenAtLeastOnce)
+			break;
+		if(elapsedFromStrategyChange() > 4) {
+			float rd = rand();
+			float radius = 0.5;
+			float el = (ros::Time::now() - lastPlayerPos.header.stamp).toSec();
+			if(el > 5)
+				radius = 2.0;
+
+			publishGoalAbsolute(lastPlayerPos.point.x + radius * sin(rd), lastPlayerPos.point.y + radius * cos(rd));
+			setStrategyState(THIS_STATE);
+		}
+
 		break;
-	if(elapsedFromStrategyChange() > 4) {
-		float rd = rand();
-		float radius = 0.5;
-		float el = (ros::Time::now() - lastPlayerPos.header.stamp).toSec();
-		if(el > 5)
-			radius = 2.0;
-
-		publishGoalAbsolute(lastPlayerPos.point.x + radius * sin(rd), lastPlayerPos.point.y + radius * cos(rd));
-		setStrategyState(THIS_STATE);
 	}
-
-	break;
-}
 }
 void Strategy::canestro()
 {

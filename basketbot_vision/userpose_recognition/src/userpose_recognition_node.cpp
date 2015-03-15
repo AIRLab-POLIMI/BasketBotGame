@@ -6,7 +6,9 @@
 #include <userpose_recognition/UserPose.h>
 #include <player_tracker/PosPrediction.h>
 #include <ros/package.h>
-
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/image_encodings.h>
 const unsigned int MAX_USERS=16;
 const std::string userpose_config_path = ros::package::getPath("userpose_recognition") + "/config";
 class UserposeRecognitionNode
@@ -16,6 +18,8 @@ class UserposeRecognitionNode
 	ros::Subscriber posPredictionSubscriber;
 	ros::NodeHandle nh;
 	ros::NodeHandle pnh;
+	image_transport::ImageTransport it;
+	image_transport::Publisher debugPosePub;
 	tf::TransformListener transformListener;
 	bool isTransformAvailable(std::string a ,std::string b);
 	void analyzeUser(int i);
@@ -72,7 +76,7 @@ bool UserposeRecognitionNode::isUserAvailable(unsigned int id)
 }
 
 
-UserposeRecognitionNode::UserposeRecognitionNode():nh(),pnh("~")
+UserposeRecognitionNode::UserposeRecognitionNode():nh(),pnh("~"),it(nh)
 {
 	save = false;
 	userPoseDisplay.setMouseCallback(keyCallback,this);
@@ -81,7 +85,7 @@ UserposeRecognitionNode::UserposeRecognitionNode():nh(),pnh("~")
 	userPosePublisher = nh.advertise<userpose_recognition::UserPose>("UserPose",10);
 	currentPlayer=0;
 	posPredictionSubscriber = nh.subscribe("PosPrediction", 2, &UserposeRecognitionNode::posPredictionCallback,this);
-	
+	debugPosePub = it.advertise("PoseDebug",1);
 	bool nogui= false;
 	ros::param::param<bool>("~nogui", nogui,false);
 	if(!nogui)
@@ -127,7 +131,13 @@ void UserposeRecognitionNode::analyzeUser(int user)
 	if(result.confidence<0.5)
 		index = -1;
 	userPoseDisplay.setCurrent(distance,index);
-	userPoseDisplay.showTransforms(datiUtente);
+	{
+		cv::Mat immagine = userPoseDisplay.showTransforms(datiUtente);
+		cv_bridge::CvImage out_msg;
+		out_msg.image = immagine;
+		out_msg.encoding = sensor_msgs::image_encodings::TYPE_8UC1;
+		debugPosePub.publish(out_msg.toImageMsg());
+	}
 
 	userpose_recognition::UserPose userPose;
 	userPose.poseName = index>-1?userposeRecognition.getPoseName(index):"none";

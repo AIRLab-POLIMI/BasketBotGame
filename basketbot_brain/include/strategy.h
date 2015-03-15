@@ -12,7 +12,7 @@ class RosBrianBridge;
 class Strategy
 {
 	//roba della strategia
-	enum StrategyState {STOPPED,NONE,SLOW_ROTATION,FREEZE,LAST_POSITION,STAY_AWAY,STAY_AWAY_SLOW,TILT_LEFT,TILT_RIGHT,RANDOM,PREVIOUS_STATE,THIS_STATE,GUESSED_POSITION,LATERALE_1,LATERALE_2,SCARTO_SINISTRA,SCARTO_DESTRA,AVVICINAMENTO_SINISTRA,AVVICINAMENTO_DESTRA,GIRO_DESTRA};
+	enum StrategyState {STOPPED,NONE,SLOW_ROTATION,PARTENZA,FREEZE,LAST_POSITION,STAY_AWAY,STAY_AWAY_SLOW,TILT_LEFT,TILT_RIGHT,RANDOM,PREVIOUS_STATE,THIS_STATE,GUESSED_POSITION,LATERALE_1,LATERALE_2,SCARTO_SINISTRA,SCARTO_DESTRA,AVVICINAMENTO_SINISTRA,AVVICINAMENTO_DESTRA,GIRO_DESTRA};
 	ros::NodeHandle nh;
 	ros::NodeHandle pnh;
 	ros::Timer timer;
@@ -28,7 +28,7 @@ class Strategy
 	ros::Time lastUpdate;
 	TimeThrottle timeThrottle;
 	StrategyAnalyzer strategyAnalyzer;
-	
+	ros::Timer finePartitaTimer;
 
 	//stato utente, robot
 	bool userJustAppeared;
@@ -37,6 +37,7 @@ class Strategy
 	bool canestroDuranteFreeze;
 	bool sguardoFisso;
 	bool justUnfrozen;
+	unsigned int canestri;
 	
 	std::list<geometry_msgs::PointStamped> lastPlayerPositions;
 	geometry_msgs::PointStamped lastPlayerPos;
@@ -48,7 +49,7 @@ class Strategy
 	ros::Time dataUltimoCanestro;
 	player_tracker::PosPrediction lastPrediction;
 	player_tracker::PosPrediction lastPredictionWhenDisappeared;
-
+	void endGameCallback(const ros::TimerEvent& event);
 	//metodi utili
 	bool addAndCheckDataPoint(float,std::list<float> &,unsigned int);
 

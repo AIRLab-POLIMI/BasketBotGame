@@ -26,7 +26,7 @@ class UserPoseDisplay
 	bool ready;
 public:
 	UserPoseDisplay();
-	void showTransforms(UserPoseData &);
+	cv::Mat showTransforms(UserPoseData &);
 	static void mouseCallback( int event, int x, int y, int flags, void* param );
 	void setMouseCallback(CallbackFunc,void *param);
 	void spinOnce();
