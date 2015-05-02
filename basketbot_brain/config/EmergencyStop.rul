@@ -1,5 +1,7 @@
-(AND (RobotMovingForwardTooFast) 
-	(ProposedForward) )=> (&DEL.SpeedModule ANY) (SpeedModule FORWARD_SLOW);
+#(AND (RobotMovingForwardTooFast) 	(ProposedForward) )=> (&DEL.SpeedModule ANY) (SpeedModule FORWARD_SLOW);
 
-(AND (RobotMovingBackwardTooFast)
-	(ProposedBackward) )=> (&DEL.SpeedModule ANY) (SpeedModule BACKWARD_SLOW);
+#(AND (RobotMovingBackwardTooFast) (ProposedBackward) )=> (&DEL.SpeedModule ANY) (SpeedModule BACKWARD_SLOW);
+	
+ (RobotMovingForwardTooFast) => (&DEL.SpeedModule ANY) (SpeedModule BACKWARD_SLOW);
+
+(RobotMovingBackwardTooFast) => (&DEL.SpeedModule ANY) (SpeedModule FORWARD_SLOW);

@@ -28,7 +28,11 @@ void RosBrianBridge::setSpeed(float v, float rot)
 	v=std::min(std::max(v,-maxV),maxV);
 	rot=std::min(std::max(rot,-maxR),maxR);
 
-
+	static float vecchio = 0.0;
+	const float ratto = 0.1;
+	vecchio = vecchio*(1.0-ratto) + ratto*rot;
+	rot=vecchio;
+	
 	r2p::Velocity ve;
 	ve.x = v;
 	ve.w = rot * 10.0;

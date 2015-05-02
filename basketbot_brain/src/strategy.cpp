@@ -17,6 +17,7 @@ double minDistErrorThresh = 0.4;
 double maxDistErrorThresh = 0.5;
 double tiltOrientationOffset = 0.2;
 double lateralOrientationOffset= 0.3;
+double gameDuration;
 bool strategia_anti_annoiamento = false;
 bool autoStart = true;
 bool justFollow = false;
@@ -59,6 +60,7 @@ void Strategy::loadParameters()
 	GET_PARAM("map_first", mapFirst);
 	GET_PARAM("throw_pose_name",throwPoseName);
 	GET_PARAM("start_pose",startPose);
+	GET_PARAM("game_duration",gameDuration);
 	GET_PARAM("keep_player_active", strategia_anti_annoiamento);
 	GET_PARAM("obstacles_radar_decay_rate", obstaclesRadarDecayRate);
 	double hotSpotsWidth = 25, hotSpotsHeight = 25, hotSpotsStep = 0.2;
@@ -513,7 +515,7 @@ void Strategy::setStrategyState(StrategyState newState)
 	}
 	if(oldStrategyState == PARTENZA)
 	{
-		finePartitaTimer = nh.createTimer(ros::Duration(60*5),&Strategy::endGameCallback,this,true);
+		finePartitaTimer = nh.createTimer(ros::Duration(60*gameDuration),&Strategy::endGameCallback,this,true);
 	}
 	if(newState == SCARTO_SINISTRA) {
 		if(lastPrediction.velocity.y > 0)
